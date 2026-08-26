@@ -5,7 +5,9 @@ export and it produces the shortage (R02) and penalty (R16) reports described in
 Rule — Instruction Book*.
 
 **The workbook never leaves your machine.** It is parsed in the browser with SheetJS; there is no
-server, no upload endpoint and no network call with your data.
+server, no upload endpoint and no network call with your data. After upload, the parsed dataset is
+saved in your browser (IndexedDB) so a refresh does not wipe it — filters and the active tab are
+restored too.
 
 ## Running it
 

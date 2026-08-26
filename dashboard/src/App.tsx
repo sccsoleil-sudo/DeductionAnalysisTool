@@ -1,8 +1,15 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CODIFICATION } from './config/codification';
 import { clearBaseline, diffAgainstBaseline, loadBaseline, saveBaseline } from './lib/baseline';
 import { count, longDate } from './lib/format';
 import { applyFilters, distinctValues, latestJournalDate, type Filters } from './lib/metrics';
+import {
+  clearSession,
+  loadSession,
+  saveSession,
+  savedSessionLabel,
+  type TabId,
+} from './lib/persistSession';
 import { isBaselineFilename, parseWorkbook } from './lib/parseWorkbook';
 import type { BaselineDiff, ParseResult } from './lib/types';
 import { DataQualityTab } from './components/DataQualityTab';
@@ -11,11 +18,10 @@ import { FiltersBar } from './components/Filters';
 import { PenaltyTab } from './components/PenaltyTab';
 import { ShortageTab } from './components/ShortageTab';
 
-type TabId = 'shortage' | 'penalty' | 'quality';
-
 export default function App() {
   const [parse, setParse] = useState<ParseResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [hydrating, setHydrating] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>('shortage');
   const [filters, setFilters] = useState<Filters | null>(null);
@@ -24,11 +30,55 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingBaseline = useRef(false);
+  const restoredRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const session = await loadSession();
+      if (cancelled || !session) {
+        setHydrating(false);
+        return;
+      }
+
+      restoredRef.current = true;
+      setParse(session.parse);
+      setFilters(session.filters);
+      setTab(session.tab);
+
+      const baseline = loadBaseline();
+      if (baseline) {
+        setBaselineName(baseline.name);
+        setDiff(diffAgainstBaseline(session.parse.rows, baseline));
+      }
+
+      setNotice(`Restored ${savedSessionLabel() ?? session.parse.fileName} from this browser.`);
+      setHydrating(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const persist = useCallback(
+    async (nextParse: ParseResult, nextFilters: Filters, nextTab: TabId) => {
+      const saved = await saveSession({ parse: nextParse, filters: nextFilters, tab: nextTab });
+      if (!saved.ok && saved.error) setNotice(saved.error);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!parse || !filters || hydrating) return;
+    void persist(parse, filters, tab);
+  }, [parse, filters, tab, hydrating, persist]);
 
   const handleFile = useCallback(async (file: File, asBaseline: boolean) => {
     setBusy(true);
     setError(null);
-    setNotice(null);
+    if (!restoredRef.current) setNotice(null);
+
     try {
       const result = await parseWorkbook(file);
       if (result.rows.length === 0) {
@@ -42,30 +92,47 @@ export default function App() {
 
       const treatAsBaseline = asBaseline || isBaselineFilename(file.name);
       const existing = loadBaseline();
+      let uploadNotice: string | null = null;
 
       if (treatAsBaseline || !existing) {
-        const saved = saveBaseline(file.name, result.rows);
-        setBaselineName(saved.ok ? file.name : null);
+        const baselineResult = saveBaseline(file.name, result.rows);
+        setBaselineName(baselineResult.ok ? file.name : null);
         setDiff(null);
-        setNotice(
-          saved.ok
-            ? `Baseline set from ${file.name}. New/updated/removed counters start from this snapshot.`
-            : (saved.error ?? null),
-        );
+        uploadNotice = baselineResult.ok
+          ? `Baseline set from ${file.name}. Saved locally — safe to refresh this page.`
+          : (baselineResult.error ?? null);
       } else {
         setDiff(diffAgainstBaseline(result.rows, existing));
         setBaselineName(existing.name);
+        uploadNotice = `Loaded ${file.name}. Saved locally — safe to refresh this page.`;
       }
 
       const asOf = latestJournalDate(result.rows);
+      const nextFilters: Filters = { divisions: [], customers: [], basis: 'journal', asOf };
       setParse(result);
-      setFilters({ divisions: [], customers: [], basis: 'journal', asOf });
+      setFilters(nextFilters);
+      setTab('shortage');
+      restoredRef.current = false;
+
+      const stored = await saveSession({ parse: result, filters: nextFilters, tab: 'shortage' });
+      setNotice(stored.ok ? uploadNotice : (stored.error ?? uploadNotice));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not read that workbook.');
     } finally {
       setBusy(false);
     }
   }, []);
+
+  async function handleClearSavedData() {
+    await clearSession();
+    setParse(null);
+    setFilters(null);
+    setDiff(null);
+    setTab('shortage');
+    setError(null);
+    setNotice('Saved data cleared from this browser.');
+    restoredRef.current = false;
+  }
 
   const rows = parse?.rows ?? [];
 
@@ -121,12 +188,13 @@ export default function App() {
                 {diff && ` · +${count(diff.added)} new · ~${count(diff.updated)} changed · −${count(diff.removed)} gone`}
               </div>
               {baselineName && <div>Baseline: {baselineName}</div>}
+              <div>Saved in this browser</div>
             </div>
           )}
-          <button className="btn btn-primary" onClick={() => triggerUpload(false)} disabled={busy}>
+          <button className="btn btn-primary" onClick={() => triggerUpload(false)} disabled={busy || hydrating}>
             ↑ Upload &amp; Refresh
           </button>
-          <button className="btn" onClick={() => triggerUpload(true)} disabled={busy}>
+          <button className="btn" onClick={() => triggerUpload(true)} disabled={busy || hydrating}>
             Set Baseline
           </button>
           <button
@@ -141,6 +209,11 @@ export default function App() {
           >
             ✕ Clear Baseline
           </button>
+          {parse && (
+            <button className="btn btn-ghost" disabled={busy} onClick={() => void handleClearSavedData()}>
+              ✕ Clear Saved Data
+            </button>
+          )}
         </div>
 
         <input
@@ -187,7 +260,15 @@ export default function App() {
         {error && <div className="note danger">{error}</div>}
         {notice && <div className="note">{notice}</div>}
 
-        {!parse ? (
+        {hydrating ? (
+          <div className="dropzone-wrap">
+            <div className="dropzone">
+              <div className="spinner" />
+              <h2>Restoring your last session…</h2>
+              <p>Loading saved data from this browser.</p>
+            </div>
+          </div>
+        ) : !parse ? (
           <FileDrop onFile={handleFile} busy={busy} />
         ) : (
           filters && (
@@ -210,7 +291,7 @@ export default function App() {
               <p className="muted" style={{ marginTop: 22, fontSize: '0.78rem' }}>
                 Comparison window: Jan 1 → {longDate(filters.asOf)} in each year, on{' '}
                 {filters.basis === 'journal' ? 'Journal Entry Date' : 'Clearing Date'}. All processing
-                happens in this browser; no data is transmitted.
+                happens in this browser; your uploaded data is saved locally and survives refresh.
               </p>
             </>
           )
