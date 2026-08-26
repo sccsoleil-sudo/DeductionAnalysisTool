@@ -61,7 +61,7 @@ export function pivotSourceToExportRows(
   return { headers: headerStrings, rows };
 }
 
-export function downloadPivotBlockExcel(
+export function downloadPivotBlockData(
   filename: string,
   blockTitle: string,
   data: (string | number)[][],
@@ -75,4 +75,14 @@ export function downloadPivotBlockExcel(
     { name: 'Pivot view', aoa: pivotAoa, formatAmountColumns: true },
     { name: 'Source data', headers: source.headers, rows: source.rows },
   ]);
+}
+
+/** @deprecated Use downloadPivotBlockData */
+export function downloadPivotBlockExcel(
+  filename: string,
+  blockTitle: string,
+  data: (string | number)[][],
+  pivot: StoredPivotConfig,
+): void {
+  downloadPivotBlockData(filename, blockTitle, data, pivot);
 }

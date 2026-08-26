@@ -23,6 +23,8 @@ export interface CustomPivotBlock {
   title: string;
   dataSource: PivotDataSource;
   pivot: StoredPivotConfig;
+  /** User overrides keyed by segment label (pie slice, bar category, or series name). */
+  segmentColors: Record<string, string>;
 }
 
 export const PIVOT_DATA_SOURCE_LABELS: Record<PivotDataSource, string> = {
@@ -48,6 +50,7 @@ export function createCustomBlock(title = 'New analysis'): CustomPivotBlock {
     title,
     dataSource: 'filtered',
     pivot: defaultPivotConfig(),
+    segmentColors: {},
   };
 }
 

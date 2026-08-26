@@ -129,6 +129,7 @@ export default function App() {
         divisions: [],
         customers: [],
         basis: 'journal',
+        plBasis: 'clearing',
         asOf,
         months: defaultMonths(asOf),
       };
@@ -346,8 +347,15 @@ export default function App() {
 
               <div className="dashboard-footer">
                 <p className="muted dashboard-footer-left">
-                  Comparison window: {periodRangeLabel(filters)}, cut off at {longDate(filters.asOf)} on{' '}
-                  {filters.basis === 'journal' ? 'Journal Entry Date' : 'Clearing Date'}.
+                  Comparison window: {periodRangeLabel(filters)}, cut off at {longDate(filters.asOf)}.
+                  Deductions &amp; recovery on {filters.basis === 'journal' ? 'Journal Entry Date' : 'Clearing Date'}
+                  {filters.plBasis !== filters.basis && (
+                    <>
+                      ; P&amp;L impact on{' '}
+                      {filters.plBasis === 'journal' ? 'Journal Entry Date' : 'Clearing Date'}
+                    </>
+                  )}
+                  .
                 </p>
                 <p className="muted dashboard-footer-right">
                   All processing happens in this browser; your uploaded data is saved locally and survives

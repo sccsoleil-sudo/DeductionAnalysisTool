@@ -121,6 +121,17 @@ export function FiltersBar({
             <option value="clearing">Clearing Date (when settled)</option>
           </select>
         </div>
+
+        <div className="field">
+          <span className="field-label">P&amp;L impact basis</span>
+          <select
+            value={filters.plBasis}
+            onChange={(e) => onChange({ ...filters, plBasis: e.target.value as PeriodBasis })}
+          >
+            <option value="journal">Journal Entry Date</option>
+            <option value="clearing">Clearing Date</option>
+          </select>
+        </div>
       </div>
 
       <div className="filters" style={{ marginTop: 12, marginBottom: 0 }}>
@@ -160,6 +171,7 @@ export function FiltersBar({
                 divisions: [],
                 customers: [],
                 basis: 'journal',
+                plBasis: 'clearing',
                 asOf: maxDate,
                 months: defaultMonths(maxDate),
               })

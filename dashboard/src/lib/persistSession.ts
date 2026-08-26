@@ -46,6 +46,7 @@ interface StoredSession {
     divisions: string[];
     customers: string[];
     basis: Filters['basis'];
+    plBasis?: Filters['plBasis'];
     asOf: string;
     months?: number[];
   };
@@ -180,6 +181,7 @@ function toStored(session: SessionSnapshot): StoredSession {
       divisions: session.filters.divisions,
       customers: session.filters.customers,
       basis: session.filters.basis,
+      plBasis: session.filters.plBasis,
       asOf: session.filters.asOf.toISOString(),
       months: session.filters.months,
     },
@@ -198,11 +200,15 @@ function fromStored(stored: StoredSession): SessionSnapshot {
   const asOf = new Date(stored.filters.asOf);
   return {
     tab: stored.tab,
-    customBlocks: stored.customBlocks ?? [],
+    customBlocks: (stored.customBlocks ?? []).map((block) => ({
+      ...block,
+      segmentColors: block.segmentColors ?? {},
+    })),
     filters: {
       divisions: stored.filters.divisions,
       customers: stored.filters.customers,
       basis: stored.filters.basis,
+      plBasis: stored.filters.plBasis ?? stored.filters.basis,
       asOf,
       months: stored.filters.months ?? defaultMonths(asOf),
     },

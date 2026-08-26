@@ -28,10 +28,17 @@ export const MONTH_LABELS = [
 export interface Filters {
   divisions: string[];
   customers: string[];
+  /** Period basis for deductions, recovery, and most KPIs. */
   basis: PeriodBasis;
+  /** Period basis specifically for P&L impact (write-off composition). */
+  plBasis: PeriodBasis;
   asOf: Date;
   /** Calendar months included in analysis (0 = Jan … 11 = Dec). */
   months: number[];
+}
+
+export function basisLabel(basis: PeriodBasis): string {
+  return basis === 'journal' ? 'Journal Entry Date' : 'Clearing Date';
 }
 
 /** Default YTD month selection: January through the as-of month. */
@@ -109,7 +116,20 @@ export function ytdWindow(asOf: Date, year: number): { start: Date; end: Date } 
  * Month must be selected; the as-of month is capped at the as-of day for YTD parity.
  */
 export function inPeriod(row: ClaimRow, filters: Filters, year: number): boolean {
-  const d = dateFor(row, filters.basis);
+  return inPeriodWithBasis(row, filters, year, filters.basis);
+}
+
+export function inPlPeriod(row: ClaimRow, filters: Filters, year: number): boolean {
+  return inPeriodWithBasis(row, filters, year, filters.plBasis);
+}
+
+function inPeriodWithBasis(
+  row: ClaimRow,
+  filters: Filters,
+  year: number,
+  basis: PeriodBasis,
+): boolean {
+  const d = dateFor(row, basis);
   if (!d || d.getFullYear() !== year) return false;
   if (!filters.months.includes(d.getMonth())) return false;
 
@@ -123,7 +143,14 @@ export function inPeriod(row: ClaimRow, filters: Filters, year: number): boolean
 
 /** @deprecated Use inPeriod — kept for the Node verify script. */
 export function inYtd(row: ClaimRow, asOf: Date, year: number, basis: PeriodBasis): boolean {
-  return inPeriod(row, { divisions: [], customers: [], basis, asOf, months: defaultMonths(asOf) }, year);
+  return inPeriod(row, {
+    divisions: [],
+    customers: [],
+    basis,
+    plBasis: basis,
+    asOf,
+    months: defaultMonths(asOf),
+  }, year);
 }
 
 export function applyFilters(rows: ClaimRow[], filters: Filters): ClaimRow[] {
@@ -159,8 +186,9 @@ export function periodTotals(
   allRows: ClaimRow[],
   filters: Filters,
   year: number,
+  basis: PeriodBasis = filters.basis,
 ): PeriodTotals {
-  const windowRows = allRows.filter((r) => inPeriod(r, filters, year));
+  const windowRows = allRows.filter((r) => inPeriodWithBasis(r, filters, year, basis));
   const included = windowRows.filter((r) => !r.isExcluded);
 
   const byOutcome = (test: (o: string) => boolean) =>

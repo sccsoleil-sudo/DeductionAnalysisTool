@@ -11,6 +11,7 @@ import {
   customerComparison,
   inPeriod,
   monthlySeries,
+  basisLabel,
   periodRangeLabel,
   periodTotals,
   yearPeriodLabel,
@@ -57,6 +58,14 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     () => periodTotals(rows, filters, lastYear),
     [rows, filters, lastYear],
   );
+  const cyPl = useMemo(
+    () => periodTotals(rows, filters, currentYear, filters.plBasis),
+    [rows, filters, currentYear],
+  );
+  const lyPl = useMemo(
+    () => periodTotals(rows, filters, lastYear, filters.plBasis),
+    [rows, filters, lastYear],
+  );
 
   const cyRows = useMemo(
     () => rows.filter((r) => inPeriod(r, filters, currentYear)),
@@ -93,12 +102,12 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     () =>
       comparisonConfig(
         ['Open AR balance', 'Deductions received', 'Recovered', 'P&L impact (write-off)'],
-        [ly.openArBalance, ly.deductionsReceived, ly.recovered, ly.writeOffTotal],
-        [cy.openArBalance, cy.deductionsReceived, cy.recovered, cy.writeOffTotal],
+        [ly.openArBalance, ly.deductionsReceived, ly.recovered, lyPl.writeOffTotal],
+        [cy.openArBalance, cy.deductionsReceived, cy.recovered, cyPl.writeOffTotal],
         lyLabel,
         cyLabel,
       ),
-    [ly, cy, lyLabel, cyLabel],
+    [ly, cy, lyPl, cyPl, lyLabel, cyLabel],
   );
 
   const plConfig = useMemo(
@@ -106,17 +115,17 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
       stackedBarConfig(
         [lyLabel, cyLabel],
         [
-          { label: 'Write-off (WO)', data: [ly.plainWriteOff, cy.plainWriteOff], color: PALETTE.danger },
-          { label: 'COM write-off (COM WO)', data: [ly.comWriteOff, cy.comWriteOff], color: PALETTE.warn },
+          { label: 'Write-off (WO)', data: [lyPl.plainWriteOff, cyPl.plainWriteOff], color: PALETTE.danger },
+          { label: 'COM write-off (COM WO)', data: [lyPl.comWriteOff, cyPl.comWriteOff], color: PALETTE.warn },
           {
             label: 'Refuse to pay (COM, not written off)',
-            data: [ly.refuseToPay, cy.refuseToPay],
+            data: [lyPl.refuseToPay, cyPl.refuseToPay],
             color: PALETTE.slate,
           },
-          { label: 'Actual shortage (SHO)', data: [ly.actualShortage, cy.actualShortage], color: PALETTE.violet },
+          { label: 'Actual shortage (SHO)', data: [lyPl.actualShortage, cyPl.actualShortage], color: PALETTE.violet },
         ],
       ),
-    [ly, cy, lyLabel, cyLabel],
+    [lyPl, cyPl, lyLabel, cyLabel],
   );
 
   const divisionConfig = useMemo(() => {
@@ -182,8 +191,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
       { Metric: 'Open AR balance', [lyLabel]: ly.openArBalance, [cyLabel]: cy.openArBalance },
       { Metric: 'Deductions received', [lyLabel]: ly.deductionsReceived, [cyLabel]: cy.deductionsReceived },
       { Metric: 'Recovered', [lyLabel]: ly.recovered, [cyLabel]: cy.recovered },
-      { Metric: 'P&L impact (write-off)', [lyLabel]: ly.writeOffTotal, [cyLabel]: cy.writeOffTotal },
-      { Metric: 'COM write-off portion', [lyLabel]: ly.comWriteOff, [cyLabel]: cy.comWriteOff },
+      { Metric: 'P&L impact (write-off)', [lyLabel]: lyPl.writeOffTotal, [cyLabel]: cyPl.writeOffTotal },
+      { Metric: 'COM write-off portion', [lyLabel]: lyPl.comWriteOff, [cyLabel]: cyPl.comWriteOff },
       { Metric: 'Recovery rate (%)', [lyLabel]: ly.recoveryRate, [cyLabel]: cy.recoveryRate },
     ],
   };
@@ -240,11 +249,11 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
           />
           <KpiCard
             label="P&L impact — write-off"
-            value={compactMoney(cy.writeOffTotal)}
+            value={compactMoney(cyPl.writeOffTotal)}
             tone="danger"
-            current={cy.writeOffTotal}
-            previous={ly.writeOffTotal}
-            footnote={`of which COM write-off ${money(cy.comWriteOff)}`}
+            current={cyPl.writeOffTotal}
+            previous={lyPl.writeOffTotal}
+            footnote={`${basisLabel(filters.plBasis)} · COM write-off ${money(cyPl.comWriteOff)}`}
           />
         </div>
       </SectionCard>
@@ -285,7 +294,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
               { Metric: 'Open AR balance', [lyLabel]: ly.openArBalance, [cyLabel]: cy.openArBalance },
               { Metric: 'Deductions received', [lyLabel]: ly.deductionsReceived, [cyLabel]: cy.deductionsReceived },
               { Metric: 'Recovered', [lyLabel]: ly.recovered, [cyLabel]: cy.recovered },
-              { Metric: 'P&L impact (write-off)', [lyLabel]: ly.writeOffTotal, [cyLabel]: cy.writeOffTotal },
+              { Metric: 'P&L impact (write-off)', [lyLabel]: lyPl.writeOffTotal, [cyLabel]: cyPl.writeOffTotal },
             ],
           }}
         >
@@ -294,19 +303,19 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
 
         <SectionCard
           title="P&L impact composition"
-          subtitle="Write-off is the P&L hit. The COM portion is stacked separately."
+          subtitle={`Write-off is the P&L hit, on ${basisLabel(filters.plBasis)} · COM portion stacked separately.`}
           sectionExport={{
             filename: xlsxName('shortage-pl-composition'),
             headers: ['Component', lyLabel, cyLabel],
             rows: [
-              { Component: 'Write-off (WO)', [lyLabel]: ly.plainWriteOff, [cyLabel]: cy.plainWriteOff },
-              { Component: 'COM write-off (COM WO)', [lyLabel]: ly.comWriteOff, [cyLabel]: cy.comWriteOff },
+              { Component: 'Write-off (WO)', [lyLabel]: lyPl.plainWriteOff, [cyLabel]: cyPl.plainWriteOff },
+              { Component: 'COM write-off (COM WO)', [lyLabel]: lyPl.comWriteOff, [cyLabel]: cyPl.comWriteOff },
               {
                 Component: 'Refuse to pay (COM, not written off)',
-                [lyLabel]: ly.refuseToPay,
-                [cyLabel]: cy.refuseToPay,
+                [lyLabel]: lyPl.refuseToPay,
+                [cyLabel]: cyPl.refuseToPay,
               },
-              { Component: 'Actual shortage (SHO)', [lyLabel]: ly.actualShortage, [cyLabel]: cy.actualShortage },
+              { Component: 'Actual shortage (SHO)', [lyLabel]: lyPl.actualShortage, [cyLabel]: cyPl.actualShortage },
             ],
           }}
         >
