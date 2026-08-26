@@ -3,6 +3,7 @@ import { CODIFICATION, UNCLASSIFIED } from '../config/codification';
 import { classify } from '../lib/classify';
 import { count, isoDate, money } from '../lib/format';
 import type { ClaimRow, ParseResult } from '../lib/types';
+import { SectionCard } from './SectionCard';
 
 interface DataQualityTabProps {
   parse: ParseResult;
@@ -23,8 +24,6 @@ export function DataQualityTab({ parse, rows }: DataQualityTabProps) {
     const map = new Map<string, CodeStat>();
     for (const row of rows) {
       const key = `${row.reasonCode}|${row.refKey2}`;
-      // Classify as if closed, so the row shows the code's meaning rather than
-      // whichever open/closed state happened to come first.
       const outcome = classify(row.reasonCode, row.refKey2, false);
       const entry = map.get(key) ?? {
         reasonCode: row.reasonCode,
@@ -64,16 +63,44 @@ export function DataQualityTab({ parse, rows }: DataQualityTabProps) {
 
   return (
     <>
-      {parse.warnings.map((w, i) => (
-        <div key={i} className={`note ${w.level === 'error' ? 'danger' : w.level}`}>
-          {w.message}
-        </div>
-      ))}
+      {parse.warnings.length > 0 && (
+        <SectionCard
+          title="Parse warnings"
+          subtitle="Messages from the latest workbook upload"
+          csv={{
+            filename: 'data-quality-warnings',
+            headers: ['Level', 'Message'],
+            rows: parse.warnings.map((w) => ({ Level: w.level, Message: w.message })),
+          }}
+        >
+          {parse.warnings.map((w, i) => (
+            <div key={i} className={`note ${w.level === 'error' ? 'danger' : w.level}`} style={{ marginBottom: i < parse.warnings.length - 1 ? 8 : 0 }}>
+              {w.message}
+            </div>
+          ))}
+        </SectionCard>
+      )}
 
       <div className="grid grid-3">
-        <div className="card">
-          <div className="card-title">File</div>
-          <div className="card-sub">{parse.fileName}</div>
+        <SectionCard
+          title="File"
+          subtitle={parse.fileName}
+          csv={{
+            filename: 'data-quality-file',
+            headers: ['Field', 'Value'],
+            rows: [
+              { Field: 'File name', Value: parse.fileName },
+              { Field: 'Rows loaded', Value: rows.length },
+              { Field: 'Sheets used', Value: parse.sheetsUsed.join(', ') || '—' },
+              { Field: 'Sheets skipped', Value: parse.sheetsSkipped.length },
+              {
+                Field: 'Journal date range',
+                Value: `${isoDate(dateRange.min)} → ${isoDate(dateRange.max)}`,
+              },
+              { Field: 'Open/closed derived from', Value: parse.openClosedSource },
+            ],
+          }}
+        >
           <table>
             <tbody>
               <tr>
@@ -100,11 +127,21 @@ export function DataQualityTab({ parse, rows }: DataQualityTabProps) {
               </tr>
             </tbody>
           </table>
-        </div>
+        </SectionCard>
 
-        <div className="card">
-          <div className="card-title">Issues to review</div>
-          <div className="card-sub">Rows that will read oddly on the dashboard.</div>
+        <SectionCard
+          title="Issues to review"
+          subtitle="Rows that will read oddly on the dashboard."
+          csv={{
+            filename: 'data-quality-issues',
+            headers: ['Issue', 'Count'],
+            rows: [
+              { Issue: 'Unclassified Reference Key 2', Count: unclassified.length },
+              { Issue: 'Unrecognized Business Area', Count: unknownDivision.length },
+              { Issue: 'Unreadable Journal Entry Date', Count: missingDates.length },
+            ],
+          }}
+        >
           <table>
             <tbody>
               <tr>
@@ -139,13 +176,26 @@ export function DataQualityTab({ parse, rows }: DataQualityTabProps) {
               </tr>
             </tbody>
           </table>
-        </div>
+        </SectionCard>
 
-        <div className="card">
-          <div className="card-title">Active codification</div>
-          <div className="card-sub">
-            Edit <code>src/config/codification.ts</code> to change any of these.
-          </div>
+        <SectionCard
+          title="Active codification"
+          subtitle="Edit src/config/codification.ts to change any of these."
+          csv={{
+            filename: 'data-quality-codification',
+            headers: ['Rule', 'Value'],
+            rows: [
+              { Rule: 'Excluded codes', Value: CODIFICATION.excludedRefKey2.join(', ') },
+              {
+                Rule: 'Recovered codes',
+                Value: CODIFICATION.recoveredRefKey2.map((c) => c || '(blank)').join(', '),
+              },
+              { Rule: 'Write-off marker', Value: `contains "${CODIFICATION.writeOffContains}"` },
+              { Rule: 'Refuse-to-pay marker', Value: `starts with "${CODIFICATION.refuseToPayPrefix}"` },
+              { Rule: 'Actual shortage', Value: CODIFICATION.actualShortageCode },
+            ],
+          }}
+        >
           <table>
             <tbody>
               <tr>
@@ -172,15 +222,24 @@ export function DataQualityTab({ parse, rows }: DataQualityTabProps) {
               </tr>
             </tbody>
           </table>
-        </div>
+        </SectionCard>
       </div>
 
-      <div className="card">
-        <div className="card-title">Every Reference Key 2 in the file</div>
-        <div className="card-sub">
-          Unrecognized codes are listed first — these are the ones to correct in SAP or add to the
-          codification config.
-        </div>
+      <SectionCard
+        title="Every Reference Key 2 in the file"
+        subtitle="Unrecognized codes are listed first — correct these in SAP or add to the codification config."
+        csv={{
+          filename: 'data-quality-reference-key-2',
+          headers: ['Reason Code', 'Reference Key 2', 'Classified as (when closed)', 'Lines', 'Amount'],
+          rows: codeStats.map((stat) => ({
+            'Reason Code': stat.reasonCode,
+            'Reference Key 2': stat.refKey2 || '(blank)',
+            'Classified as (when closed)': stat.outcome,
+            Lines: stat.lines,
+            Amount: stat.amount,
+          })),
+        }}
+      >
         <div className="table-scroll">
           <table>
             <thead>
@@ -209,7 +268,7 @@ export function DataQualityTab({ parse, rows }: DataQualityTabProps) {
             </tbody>
           </table>
         </div>
-      </div>
+      </SectionCard>
     </>
   );
 }

@@ -188,6 +188,11 @@ button {
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.grid .card {
+  margin-bottom: 0;
 }
 
 .card-title {
@@ -201,6 +206,49 @@ button {
   font-size: 0.76rem;
   color: var(--clr-muted);
   margin-bottom: 14px;
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.card-header .card-title {
+  margin-bottom: 2px;
+}
+
+.card-header .card-sub {
+  margin-bottom: 0;
+}
+
+.card-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-download {
+  flex-shrink: 0;
+  border: 1px solid var(--clr-border);
+  background: var(--clr-white);
+  color: var(--clr-primary);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-download:hover {
+  background: #f1f5f9;
+  border-color: var(--clr-primary);
+}
+
+.kpi-grid {
+  margin-bottom: 0;
 }
 
 .grid {

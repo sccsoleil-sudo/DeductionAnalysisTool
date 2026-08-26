@@ -26,6 +26,10 @@ import {
 } from './Chart';
 import { KpiCard } from './KpiCard';
 import { CustomerTable } from './CustomerTable';
+import { SectionCard } from './SectionCard';
+import type { CsvExport } from './DownloadCsvButton';
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 interface ShortageTabProps {
   rows: ClaimRow[];
@@ -77,6 +81,9 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     [cyRows],
   );
 
+  const monthlyLy = useMemo(() => monthlySeries(rows, lastYear, basis), [rows, lastYear, basis]);
+  const monthlyCy = useMemo(() => monthlySeries(rows, currentYear, basis), [rows, currentYear, basis]);
+
   const headlineConfig = useMemo(
     () =>
       comparisonConfig(
@@ -94,26 +101,14 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
       stackedBarConfig(
         [lyLabel, cyLabel],
         [
-          {
-            label: 'Write-off (WO)',
-            data: [ly.plainWriteOff, cy.plainWriteOff],
-            color: PALETTE.danger,
-          },
-          {
-            label: 'COM write-off (COM WO)',
-            data: [ly.comWriteOff, cy.comWriteOff],
-            color: PALETTE.warn,
-          },
+          { label: 'Write-off (WO)', data: [ly.plainWriteOff, cy.plainWriteOff], color: PALETTE.danger },
+          { label: 'COM write-off (COM WO)', data: [ly.comWriteOff, cy.comWriteOff], color: PALETTE.warn },
           {
             label: 'Refuse to pay (COM, not written off)',
             data: [ly.refuseToPay, cy.refuseToPay],
             color: PALETTE.slate,
           },
-          {
-            label: 'Actual shortage (SHO)',
-            data: [ly.actualShortage, cy.actualShortage],
-            color: PALETTE.violet,
-          },
+          { label: 'Actual shortage (SHO)', data: [ly.actualShortage, cy.actualShortage], color: PALETTE.violet },
         ],
       ),
     [ly, cy, lyLabel, cyLabel],
@@ -132,14 +127,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
   }, [divisionCy, divisionLy, lyLabel, cyLabel]);
 
   const monthlyChart = useMemo(
-    () =>
-      monthlyConfig(
-        monthlySeries(rows, lastYear, basis),
-        monthlySeries(rows, currentYear, basis),
-        String(lastYear),
-        String(currentYear),
-      ),
-    [rows, lastYear, currentYear, basis],
+    () => monthlyConfig(monthlyLy, monthlyCy, String(lastYear), String(currentYear)),
+    [monthlyLy, monthlyCy, lastYear, currentYear],
   );
 
   const outcomeChart = useMemo(
@@ -175,11 +164,37 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
   const openTopChart = useMemo(
     () =>
       horizontalBarConfig(
-        topOpen.map((c) => shortName(c.name)),
+        topOpen.map((c) => c.name),
         topOpen.map((c) => c.value),
       ),
     [topOpen],
   );
+
+  const kpiCsv: CsvExport = {
+    filename: 'shortage-key-metrics',
+    headers: ['Metric', lyLabel, cyLabel],
+    rows: [
+      { Metric: 'Open AR balance', [lyLabel]: ly.openArBalance, [cyLabel]: cy.openArBalance },
+      { Metric: 'Deductions received', [lyLabel]: ly.deductionsReceived, [cyLabel]: cy.deductionsReceived },
+      { Metric: 'Recovered', [lyLabel]: ly.recovered, [cyLabel]: cy.recovered },
+      { Metric: 'P&L impact (write-off)', [lyLabel]: ly.writeOffTotal, [cyLabel]: cy.writeOffTotal },
+      { Metric: 'COM write-off portion', [lyLabel]: ly.comWriteOff, [cyLabel]: cy.comWriteOff },
+      { Metric: 'Recovery rate (%)', [lyLabel]: ly.recoveryRate, [cyLabel]: cy.recoveryRate },
+    ],
+  };
+
+  const supplementalCsv: CsvExport = {
+    filename: 'shortage-supplemental',
+    headers: ['Item', 'Amount', 'Lines'],
+    rows: [
+      ...(cy.excluded !== 0
+        ? [{ Item: 'Excluded offsets (PMT/XXX/XXXX)', Amount: cy.excluded, Lines: '' }]
+        : []),
+      ...(amazon.count > 0
+        ? [{ Item: 'Amazon R17 potential shortage', Amount: amazon.total, Lines: amazon.count }]
+        : []),
+    ],
+  };
 
   if (rows.length === 0) {
     return <div className="empty">No R02 shortage rows match the current filters.</div>;
@@ -187,130 +202,215 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
 
   return (
     <>
-      <div className="grid grid-4">
-        <KpiCard
-          label="Open AR balance"
-          value={compactMoney(cy.openArBalance)}
-          tone="info"
-          current={cy.openArBalance}
-          previous={ly.openArBalance}
-          footnote={`Uncleared as of ${longDate(asOf)}`}
-        />
-        <KpiCard
-          label="Deductions received"
-          value={compactMoney(cy.deductionsReceived)}
-          tone="primary"
-          current={cy.deductionsReceived}
-          previous={ly.deductionsReceived}
-          footnote={`${count(cy.rowCount)} lines · excludes ${CODIFICATION.excludedRefKey2.join(', ')}`}
-        />
-        <KpiCard
-          label="Recovered"
-          value={compactMoney(cy.recovered)}
-          tone="accent"
-          current={cy.recovered}
-          previous={ly.recovered}
-          higherIsBetter
-          footnote={`Recovery rate ${percent(cy.recoveryRate)} (LY ${percent(ly.recoveryRate)})`}
-        />
-        <KpiCard
-          label="P&L impact — write-off"
-          value={compactMoney(cy.writeOffTotal)}
-          tone="danger"
-          current={cy.writeOffTotal}
-          previous={ly.writeOffTotal}
-          footnote={`of which COM write-off ${money(cy.comWriteOff)}`}
-        />
-      </div>
+      <SectionCard
+        title="Key metrics"
+        subtitle={`${lyLabel} vs ${cyLabel}, cut off at ${longDate(asOf)}`}
+        csv={kpiCsv}
+      >
+        <div className="grid grid-4 kpi-grid">
+          <KpiCard
+            label="Open AR balance"
+            value={compactMoney(cy.openArBalance)}
+            tone="info"
+            current={cy.openArBalance}
+            previous={ly.openArBalance}
+            footnote={`Uncleared as of ${longDate(asOf)}`}
+          />
+          <KpiCard
+            label="Deductions received"
+            value={compactMoney(cy.deductionsReceived)}
+            tone="primary"
+            current={cy.deductionsReceived}
+            previous={ly.deductionsReceived}
+            footnote={`${count(cy.rowCount)} lines · excludes ${CODIFICATION.excludedRefKey2.join(', ')}`}
+          />
+          <KpiCard
+            label="Recovered"
+            value={compactMoney(cy.recovered)}
+            tone="accent"
+            current={cy.recovered}
+            previous={ly.recovered}
+            higherIsBetter
+            footnote={`Recovery rate ${percent(cy.recoveryRate)} (LY ${percent(ly.recoveryRate)})`}
+          />
+          <KpiCard
+            label="P&L impact — write-off"
+            value={compactMoney(cy.writeOffTotal)}
+            tone="danger"
+            current={cy.writeOffTotal}
+            previous={ly.writeOffTotal}
+            footnote={`of which COM write-off ${money(cy.comWriteOff)}`}
+          />
+        </div>
+      </SectionCard>
 
       {(cy.excluded !== 0 || amazon.count > 0) && (
-        <div className="note info">
-          {cy.excluded !== 0 && (
-            <>
-              <strong>Identified payback / offsets (excluded):</strong> {money(cy.excluded)} across{' '}
-              {CODIFICATION.excludedRefKey2.join(', ')} lines — held out of every KPI above.
-            </>
-          )}
-          {cy.excluded !== 0 && amazon.count > 0 && <br />}
-          {amazon.count > 0 && (
-            <>
-              <strong>Amazon R17 potential shortage:</strong> {money(amazon.total)} over{' '}
-              {count(amazon.count)} lines — tracked as forward-looking risk, never part of R02 totals.
-            </>
-          )}
-        </div>
+        <SectionCard
+          title="Supplemental items"
+          subtitle="Held out of headline KPI totals"
+          csv={supplementalCsv}
+          className="card"
+        >
+          <div className="note info" style={{ marginBottom: 0 }}>
+            {cy.excluded !== 0 && (
+              <>
+                <strong>Identified payback / offsets (excluded):</strong> {money(cy.excluded)} across{' '}
+                {CODIFICATION.excludedRefKey2.join(', ')} lines — held out of every KPI above.
+              </>
+            )}
+            {cy.excluded !== 0 && amazon.count > 0 && <br />}
+            {amazon.count > 0 && (
+              <>
+                <strong>Amazon R17 potential shortage:</strong> {money(amazon.total)} over{' '}
+                {count(amazon.count)} lines — tracked as forward-looking risk, never part of R02 totals.
+              </>
+            )}
+          </div>
+        </SectionCard>
       )}
 
       <div className="grid grid-2">
-        <div className="card">
-          <div className="card-title">Year-on-year comparison — {lyLabel} vs {cyLabel}</div>
-          <div className="card-sub">
-            Same calendar window in both years, cut off at {longDate(asOf)}.
-          </div>
+        <SectionCard
+          title={`Year-on-year comparison — ${lyLabel} vs ${cyLabel}`}
+          subtitle={`Same calendar window in both years, cut off at ${longDate(asOf)}.`}
+          csv={{
+            filename: 'shortage-yoy-comparison',
+            headers: ['Metric', lyLabel, cyLabel],
+            rows: [
+              { Metric: 'Open AR balance', [lyLabel]: ly.openArBalance, [cyLabel]: cy.openArBalance },
+              { Metric: 'Deductions received', [lyLabel]: ly.deductionsReceived, [cyLabel]: cy.deductionsReceived },
+              { Metric: 'Recovered', [lyLabel]: ly.recovered, [cyLabel]: cy.recovered },
+              { Metric: 'P&L impact (write-off)', [lyLabel]: ly.writeOffTotal, [cyLabel]: cy.writeOffTotal },
+            ],
+          }}
+        >
           <Chart config={headlineConfig} className="chart-box tall" />
-        </div>
+        </SectionCard>
 
-        <div className="card">
-          <div className="card-title">P&L impact composition</div>
-          <div className="card-sub">
-            Write-off is the P&L hit. The COM portion is stacked separately so the refused-then-written-off
-            amount is visible on its own.
-          </div>
+        <SectionCard
+          title="P&L impact composition"
+          subtitle="Write-off is the P&L hit. The COM portion is stacked separately."
+          csv={{
+            filename: 'shortage-pl-composition',
+            headers: ['Component', lyLabel, cyLabel],
+            rows: [
+              { Component: 'Write-off (WO)', [lyLabel]: ly.plainWriteOff, [cyLabel]: cy.plainWriteOff },
+              { Component: 'COM write-off (COM WO)', [lyLabel]: ly.comWriteOff, [cyLabel]: cy.comWriteOff },
+              {
+                Component: 'Refuse to pay (COM, not written off)',
+                [lyLabel]: ly.refuseToPay,
+                [cyLabel]: cy.refuseToPay,
+              },
+              { Component: 'Actual shortage (SHO)', [lyLabel]: ly.actualShortage, [cyLabel]: cy.actualShortage },
+            ],
+          }}
+        >
           <Chart config={plConfig} className="chart-box tall" />
-        </div>
+        </SectionCard>
       </div>
 
       <div className="grid grid-2">
-        <div className="card">
-          <div className="card-title">Division breakdown</div>
-          <div className="card-sub">Business Area mapped through the codification table.</div>
+        <SectionCard
+          title="Division breakdown"
+          subtitle="Business Area mapped through the codification table."
+          csv={{
+            filename: 'shortage-division-breakdown',
+            headers: ['Division', lyLabel, cyLabel],
+            rows: divisionCy.map((d) => ({
+              Division: d.name,
+              [lyLabel]: divisionLy.find((x) => x.name === d.name)?.value ?? 0,
+              [cyLabel]: d.value,
+            })),
+          }}
+        >
           <Chart config={divisionConfig} />
-        </div>
+        </SectionCard>
 
-        <div className="card">
-          <div className="card-title">Monthly deduction trend</div>
-          <div className="card-sub">Full calendar year, both periods.</div>
+        <SectionCard
+          title="Monthly deduction trend"
+          subtitle="Full calendar year, both periods."
+          csv={{
+            filename: 'shortage-monthly-trend',
+            headers: ['Month', String(lastYear), String(currentYear)],
+            rows: MONTHS.map((month, i) => ({
+              Month: month,
+              [String(lastYear)]: monthlyLy[i],
+              [String(currentYear)]: monthlyCy[i],
+            })),
+          }}
+        >
           <Chart config={monthlyChart} />
-        </div>
+        </SectionCard>
       </div>
 
       <div className="grid grid-3">
-        <div className="card">
-          <div className="card-title">Outcome split — {cyLabel}</div>
-          <div className="card-sub">Closed items classified by Reference Key 2.</div>
+        <SectionCard
+          title={`Outcome split — ${cyLabel}`}
+          subtitle="Closed items classified by Reference Key 2."
+          csv={{
+            filename: 'shortage-outcome-split',
+            headers: ['Outcome', 'Amount', 'Lines'],
+            rows: outcomes.map((o) => ({ Outcome: o.name, Amount: o.value, Lines: o.count })),
+          }}
+        >
           <Chart config={outcomeChart} className="chart-box short" />
-        </div>
+        </SectionCard>
 
-        <div className="card">
-          <div className="card-title">Open item buckets</div>
-          <div className="card-sub">Potential lost vs recoverable vs pending analysis.</div>
+        <SectionCard
+          title="Open item buckets"
+          subtitle="Potential lost vs recoverable vs pending analysis."
+          csv={{
+            filename: 'shortage-open-buckets',
+            headers: ['Bucket', 'Amount', 'Lines'],
+            rows: openBuckets.map((o) => ({ Bucket: o.name, Amount: o.value, Lines: o.count })),
+          }}
+        >
           <Chart config={openBucketChart} className="chart-box short" />
-        </div>
+        </SectionCard>
 
-        <div className="card">
-          <div className="card-title">Open items by dispute status</div>
-          <div className="card-sub">SAP status mapped to management labels.</div>
+        <SectionCard
+          title="Open items by dispute status"
+          subtitle="SAP status mapped to management labels."
+          csv={{
+            filename: 'shortage-dispute-status',
+            headers: ['Status', 'Amount', 'Lines'],
+            rows: disputeStatuses.map((d) => ({ Status: d.name, Amount: d.value, Lines: d.count })),
+          }}
+        >
           <Chart config={disputeChart} className="chart-box short" />
-        </div>
+        </SectionCard>
       </div>
 
       <div className="grid grid-2">
-        <div className="card">
-          <div className="card-title">Customers — {lyLabel} vs {cyLabel}</div>
-          <div className="card-sub">Ranked by current-period deduction value.</div>
+        <SectionCard
+          title={`Customers — ${lyLabel} vs ${cyLabel}`}
+          subtitle="Ranked by current-period deduction value."
+          csv={{
+            filename: 'shortage-customer-comparison',
+            headers: ['Customer', lyLabel, cyLabel, 'Change'],
+            rows: topCustomers.map((c) => ({
+              Customer: c.name,
+              [lyLabel]: c.previous,
+              [cyLabel]: c.current,
+              Change: c.delta,
+            })),
+          }}
+        >
           <CustomerTable rows={topCustomers} lyLabel={lyLabel} cyLabel={cyLabel} />
-        </div>
+        </SectionCard>
 
-        <div className="card">
-          <div className="card-title">Top 5 customers by open exposure</div>
-          <div className="card-sub">Uncleared R02 lines in the current period.</div>
+        <SectionCard
+          title="Top 5 customers by open exposure"
+          subtitle="Uncleared R02 lines in the current period."
+          csv={{
+            filename: 'shortage-top-open-customers',
+            headers: ['Customer', 'Open amount', 'Lines'],
+            rows: topOpen.map((c) => ({ Customer: c.name, 'Open amount': c.value, Lines: c.count })),
+          }}
+        >
           <Chart config={openTopChart} />
-        </div>
+        </SectionCard>
       </div>
     </>
   );
-}
-
-function shortName(name: string): string {
-  return name.length > 26 ? `${name.slice(0, 26)}…` : name;
 }
