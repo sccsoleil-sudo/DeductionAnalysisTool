@@ -4,6 +4,12 @@ Browser-based Logistics Master Dashboard for L'Oréal Canada shortage (R02) and 
 
 Upload a SAP Excel export and get year-on-year YTD KPIs, charts and customer tables. **All processing stays in the browser** — the workbook is never uploaded to a server.
 
+## Live site
+
+https://sccsoleil-sudo.github.io/DeductionAnalysisTool/
+
+Deployed from `main` via GitHub Pages (Actions). After each push to `main`, the workflow rebuilds and publishes the Vite app.
+
 ## Quick start
 
 ```bash

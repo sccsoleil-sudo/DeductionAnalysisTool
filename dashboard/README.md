@@ -17,6 +17,16 @@ npm run dev
 
 Then open http://localhost:5173 and drop in the `.xlsx`.
 
+### GitHub Pages
+
+Live site: https://sccsoleil-sudo.github.io/DeductionAnalysisTool/
+
+Pushes to `main` build and publish automatically via Actions. To build the same artifact locally:
+
+```bash
+VITE_BASE=/DeductionAnalysisTool/ npm run build
+```
+
 To produce a static build you can host on a share or open from disk:
 
 ```bash
