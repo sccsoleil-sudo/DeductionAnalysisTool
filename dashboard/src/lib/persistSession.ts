@@ -1,13 +1,14 @@
 import type { ClaimRow, ParseResult } from './types';
 import type { Filters } from './metrics';
 import { defaultMonths } from './metrics';
+import type { CustomPivotBlock } from './customBlocks';
 
 const DB_NAME = 'lmd-dashboard';
 const DB_VERSION = 1;
 const STORE = 'session';
 const META_KEY = 'lmd.session.meta.v1';
 
-export type TabId = 'shortage' | 'penalty' | 'quality';
+export type TabId = 'shortage' | 'penalty' | 'quality' | 'explore';
 
 /** Compact row tuple — short keys in JSON add up over tens of thousands of lines. */
 type StoredRow = [
@@ -40,6 +41,7 @@ interface StoredSession {
   v: 1;
   savedAt: string;
   tab: TabId;
+  customBlocks?: CustomPivotBlock[];
   filters: {
     divisions: string[];
     customers: string[];
@@ -61,6 +63,7 @@ export interface SessionSnapshot {
   parse: ParseResult;
   filters: Filters;
   tab: TabId;
+  customBlocks: CustomPivotBlock[];
 }
 
 function toStoredRow(row: ClaimRow): StoredRow {
@@ -172,6 +175,7 @@ function toStored(session: SessionSnapshot): StoredSession {
     v: 1,
     savedAt: new Date().toISOString(),
     tab: session.tab,
+    customBlocks: session.customBlocks,
     filters: {
       divisions: session.filters.divisions,
       customers: session.filters.customers,
@@ -194,6 +198,7 @@ function fromStored(stored: StoredSession): SessionSnapshot {
   const asOf = new Date(stored.filters.asOf);
   return {
     tab: stored.tab,
+    customBlocks: stored.customBlocks ?? [],
     filters: {
       divisions: stored.filters.divisions,
       customers: stored.filters.customers,

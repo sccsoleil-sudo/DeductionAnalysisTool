@@ -675,3 +675,114 @@ select[multiple] {
   padding: 32px 12px;
   font-size: 0.86rem;
 }
+
+/* ── Custom pivot blocks (Explore tab) ── */
+.custom-blocks-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.custom-blocks-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+.custom-blocks-empty {
+  background: var(--clr-white);
+  border: 1px dashed var(--clr-border);
+  border-radius: var(--radius);
+  padding: 40px 24px;
+}
+
+.custom-blocks-empty .btn {
+  margin-top: 16px;
+}
+
+.pivot-block {
+  overflow: hidden;
+}
+
+.pivot-block-header {
+  flex: 1;
+  min-width: 0;
+}
+
+.pivot-block-title {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  border: none;
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--clr-text);
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.pivot-block-title:focus {
+  outline: 2px solid var(--clr-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.pivot-block-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.pivot-source-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--clr-muted);
+}
+
+.pivot-source-label select {
+  font-size: 0.78rem;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--clr-border);
+  max-width: 220px;
+}
+
+.pivot-block-delete {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+}
+
+.pivot-wrap {
+  overflow-x: auto;
+  margin-top: 4px;
+}
+
+.pivot-wrap .pvtUi {
+  font-family: inherit;
+  font-size: 0.82rem;
+  color: var(--clr-text);
+}
+
+.pivot-wrap .pvtUi select,
+.pivot-wrap .pvtUi input {
+  font-family: inherit;
+  font-size: 0.78rem;
+}
+
+.pivot-wrap table.pvtTable {
+  font-size: 0.8rem;
+}
+
+.pivot-wrap .pvtAxisContainer li span.pvtAttr {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 4px;
+  padding: 3px 7px;
+}
+

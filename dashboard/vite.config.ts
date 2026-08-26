@@ -6,6 +6,19 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   base: process.env.VITE_BASE || '/',
   plugins: [react()],
+  optimizeDeps: {
+    include: ['plotly.js-dist-min', 'react-plotly.js', 'react-pivottable'],
+  },
+  build: {
+    chunkSizeWarningLimit: 1600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          plotly: ['plotly.js-dist-min', 'react-plotly.js'],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     open: true,

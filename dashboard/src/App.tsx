@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CODIFICATION } from './config/codification';
 import { clearBaseline, diffAgainstBaseline, loadBaseline, saveBaseline } from './lib/baseline';
 import { count, longDate } from './lib/format';
@@ -17,6 +17,11 @@ import { FileDrop } from './components/FileDrop';
 import { FiltersBar } from './components/Filters';
 import { PenaltyTab } from './components/PenaltyTab';
 import { ShortageTab } from './components/ShortageTab';
+import type { CustomPivotBlock } from './lib/customBlocks';
+
+const CustomBlocksTab = lazy(() =>
+  import('./components/CustomBlocksTab').then((m) => ({ default: m.CustomBlocksTab })),
+);
 
 export default function App() {
   const [parse, setParse] = useState<ParseResult | null>(null);
@@ -24,6 +29,7 @@ export default function App() {
   const [hydrating, setHydrating] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>('shortage');
+  const [customBlocks, setCustomBlocks] = useState<CustomPivotBlock[]>([]);
   const [filters, setFilters] = useState<Filters | null>(null);
   const [diff, setDiff] = useState<BaselineDiff | null>(null);
   const [baselineName, setBaselineName] = useState(() => loadBaseline()?.name ?? null);
@@ -45,6 +51,7 @@ export default function App() {
       setParse(session.parse);
       setFilters(session.filters);
       setTab(session.tab);
+      setCustomBlocks(session.customBlocks);
 
       const baseline = loadBaseline();
       if (baseline) {
@@ -62,8 +69,18 @@ export default function App() {
   }, []);
 
   const persist = useCallback(
-    async (nextParse: ParseResult, nextFilters: Filters, nextTab: TabId) => {
-      const saved = await saveSession({ parse: nextParse, filters: nextFilters, tab: nextTab });
+    async (
+      nextParse: ParseResult,
+      nextFilters: Filters,
+      nextTab: TabId,
+      nextBlocks: CustomPivotBlock[],
+    ) => {
+      const saved = await saveSession({
+        parse: nextParse,
+        filters: nextFilters,
+        tab: nextTab,
+        customBlocks: nextBlocks,
+      });
       if (!saved.ok && saved.error) setNotice(saved.error);
     },
     [],
@@ -71,8 +88,8 @@ export default function App() {
 
   useEffect(() => {
     if (!parse || !filters || hydrating) return;
-    void persist(parse, filters, tab);
-  }, [parse, filters, tab, hydrating, persist]);
+    void persist(parse, filters, tab, customBlocks);
+  }, [parse, filters, tab, customBlocks, hydrating, persist]);
 
   const handleFile = useCallback(async (file: File, asBaseline: boolean) => {
     setBusy(true);
@@ -120,19 +137,25 @@ export default function App() {
       setTab('shortage');
       restoredRef.current = false;
 
-      const stored = await saveSession({ parse: result, filters: nextFilters, tab: 'shortage' });
+      const stored = await saveSession({
+        parse: result,
+        filters: nextFilters,
+        tab: 'shortage',
+        customBlocks,
+      });
       setNotice(stored.ok ? uploadNotice : (stored.error ?? uploadNotice));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not read that workbook.');
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [customBlocks]);
 
   async function handleClearSavedData() {
     await clearSession();
     setParse(null);
     setFilters(null);
+    setCustomBlocks([]);
     setDiff(null);
     setTab('shortage');
     setError(null);
@@ -259,6 +282,13 @@ export default function App() {
             Data Quality
             <span className="tab-count">{count(parse.warnings.length)}</span>
           </button>
+          <button
+            className={`tab${tab === 'explore' ? ' active' : ''}`}
+            onClick={() => setTab('explore')}
+          >
+            Explore
+            <span className="tab-count">{count(customBlocks.length)}</span>
+          </button>
         </nav>
       )}
 
@@ -293,6 +323,25 @@ export default function App() {
               )}
               {tab === 'penalty' && <PenaltyTab rows={penaltyRows} filters={filters} />}
               {tab === 'quality' && <DataQualityTab parse={parse} rows={rows} filters={filters} />}
+              {tab === 'explore' && (
+                <Suspense
+                  fallback={
+                    <div className="empty">
+                      <div className="spinner" style={{ margin: '0 auto 12px' }} />
+                      Loading pivot tools…
+                    </div>
+                  }
+                >
+                  <CustomBlocksTab
+                    blocks={customBlocks}
+                    onChange={setCustomBlocks}
+                    allRows={rows}
+                    filteredRows={filtered}
+                    shortageRows={shortageRows}
+                    penaltyRows={penaltyRows}
+                  />
+                </Suspense>
+              )}
 
               <p className="muted" style={{ marginTop: 22, fontSize: '0.78rem' }}>
                 Comparison window: {periodRangeLabel(filters)}, cut off at {longDate(filters.asOf)} on{' '}
