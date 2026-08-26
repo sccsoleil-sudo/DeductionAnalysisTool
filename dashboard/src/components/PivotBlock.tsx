@@ -7,20 +7,29 @@ import {
   type CustomPivotBlock,
   type PivotDataSource,
 } from '../lib/customBlocks';
+import { buildExportFilename, slugify } from '../lib/exportSpreadsheet';
 import { buildPivotData } from '../lib/pivotData';
+import { downloadPivotBlockExcel } from '../lib/pivotExport';
 import { PIVOT_RENDERERS } from '../lib/pivotRenderers';
 import { count } from '../lib/format';
+import type { Filters } from '../lib/metrics';
 import type { ClaimRow } from '../lib/types';
 
 interface PivotBlockProps {
   block: CustomPivotBlock;
   rows: ClaimRow[];
+  filters: Filters;
   onChange: (next: CustomPivotBlock) => void;
   onDelete: () => void;
 }
 
-export function PivotBlock({ block, rows, onChange, onDelete }: PivotBlockProps) {
+export function PivotBlock({ block, rows, filters, onChange, onDelete }: PivotBlockProps) {
   const data = useMemo(() => buildPivotData(rows), [rows]);
+
+  const exportFilename = useMemo(
+    () => buildExportFilename(`explore-${slugify(block.title)}`, filters),
+    [block.title, filters],
+  );
 
   const pivotProps = useMemo(
     () => ({
@@ -60,9 +69,20 @@ export function PivotBlock({ block, rows, onChange, onDelete }: PivotBlockProps)
             <span>{count(rows.length)} rows · drag fields below to configure</span>
           </div>
         </div>
-        <button type="button" className="btn btn-ghost pivot-block-delete" onClick={onDelete}>
-          ✕ Remove
-        </button>
+        <div className="pivot-block-actions">
+          <button
+            type="button"
+            className="btn-excel"
+            disabled={rows.length === 0}
+            title="Download Excel"
+            onClick={() => downloadPivotBlockExcel(exportFilename, block.title, data, block.pivot)}
+          >
+            ↓ Excel
+          </button>
+          <button type="button" className="btn btn-ghost pivot-block-delete" onClick={onDelete}>
+            ✕ Remove
+          </button>
+        </div>
       </div>
 
       <div className="pivot-wrap">

@@ -1,11 +1,13 @@
 import { useCallback, useMemo } from 'react';
 import { createCustomBlock, type CustomPivotBlock, type PivotDataSource } from '../lib/customBlocks';
 import type { ClaimRow } from '../lib/types';
+import type { Filters } from '../lib/metrics';
 import { PivotBlock } from './PivotBlock';
 
 interface CustomBlocksTabProps {
   blocks: CustomPivotBlock[];
   onChange: (blocks: CustomPivotBlock[]) => void;
+  filters: Filters;
   allRows: ClaimRow[];
   filteredRows: ClaimRow[];
   shortageRows: ClaimRow[];
@@ -15,6 +17,7 @@ interface CustomBlocksTabProps {
 export function CustomBlocksTab({
   blocks,
   onChange,
+  filters,
   allRows,
   filteredRows,
   shortageRows,
@@ -81,6 +84,7 @@ export function CustomBlocksTab({
             key={block.id}
             block={block}
             rows={rowsBySource[block.dataSource]}
+            filters={filters}
             onChange={(next) => updateBlock(block.id, next)}
             onDelete={() => deleteBlock(block.id)}
           />

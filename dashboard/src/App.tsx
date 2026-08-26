@@ -335,6 +335,7 @@ export default function App() {
                   <CustomBlocksTab
                     blocks={customBlocks}
                     onChange={setCustomBlocks}
+                    filters={filters}
                     allRows={rows}
                     filteredRows={filtered}
                     shortageRows={shortageRows}
@@ -343,11 +344,16 @@ export default function App() {
                 </Suspense>
               )}
 
-              <p className="muted" style={{ marginTop: 22, fontSize: '0.78rem' }}>
-                Comparison window: {periodRangeLabel(filters)}, cut off at {longDate(filters.asOf)} on{' '}
-                {filters.basis === 'journal' ? 'Journal Entry Date' : 'Clearing Date'}. All processing
-                happens in this browser; your uploaded data is saved locally and survives refresh.
-              </p>
+              <div className="dashboard-footer">
+                <p className="muted dashboard-footer-left">
+                  Comparison window: {periodRangeLabel(filters)}, cut off at {longDate(filters.asOf)} on{' '}
+                  {filters.basis === 'journal' ? 'Journal Entry Date' : 'Clearing Date'}.
+                </p>
+                <p className="muted dashboard-footer-right">
+                  All processing happens in this browser; your uploaded data is saved locally and survives
+                  refresh.
+                </p>
+              </div>
             </>
           )
         )}

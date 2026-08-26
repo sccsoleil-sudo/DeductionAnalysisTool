@@ -147,6 +147,83 @@ function applyColumnFormats(
   }
 }
 
+function applyAoaNumberFormats(ws: XLSX.WorkSheet, aoa: ExportCell[][], amountFromCol = 0): void {
+  if (aoa.length < 2) return;
+  const header = aoa[0] ?? [];
+  for (let r = 1; r < aoa.length; r++) {
+    for (let c = amountFromCol; c < header.length; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const cell = ws[addr];
+      if (!cell || typeof cell.v !== 'number') continue;
+      const headerLabel = String(header[c] ?? '').toLowerCase();
+      if (/share|rate|%/.test(headerLabel)) {
+        cell.z = '0.0"%"';
+      } else if (/lines|count/.test(headerLabel)) {
+        cell.z = '#,##0';
+      } else {
+        cell.z = '"$"#,##0.00';
+      }
+      cell.t = 'n';
+    }
+  }
+}
+
+export interface ExcelSheetSpec {
+  name: string;
+  headers?: string[];
+  rows?: ExportRow[];
+  aoa?: ExportCell[][];
+  /** When set with `aoa`, numeric columns from this index get currency/percent formats. */
+  formatAmountColumns?: boolean;
+}
+
+function sheetFromSpec(spec: ExcelSheetSpec): XLSX.WorkSheet {
+  let aoa: ExportCell[][];
+  if (spec.aoa) {
+    aoa = spec.aoa;
+  } else if (spec.headers && spec.rows) {
+    aoa = [spec.headers, ...spec.rows.map((row) => spec.headers!.map((h) => row[h] ?? ''))];
+  } else {
+    aoa = [['']];
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  if (spec.headers && spec.rows) {
+    ws['!cols'] = spec.headers.map((header) => ({ wch: columnWidth(header, spec.rows!) }));
+    applyColumnFormats(ws, spec.headers, spec.rows);
+  } else if (spec.formatAmountColumns) {
+    let firstNumeric = 0;
+    if (aoa.length > 1) {
+      for (let c = 0; c < (aoa[1]?.length ?? 0); c++) {
+        if (typeof aoa[1]![c] === 'number') {
+          firstNumeric = c;
+          break;
+        }
+      }
+    }
+    applyAoaNumberFormats(ws, aoa, firstNumeric);
+    ws['!cols'] = (aoa[0] ?? []).map((cell, index) => ({
+      wch:
+        index < firstNumeric
+          ? Math.min(Math.max(String(cell).length + 4, 16), 28)
+          : Math.min(Math.max(String(cell).length + 4, 14), 24),
+    }));
+  }
+
+  ws['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 1, topLeftCell: 'A2', activeCell: 'A2' }];
+  return ws;
+}
+
+export function downloadExcelWorkbook(filename: string, sheets: ExcelSheetSpec[]): void {
+  const wb = XLSX.utils.book_new();
+  for (const spec of sheets) {
+    XLSX.utils.book_append_sheet(wb, sheetFromSpec(spec), sanitizeSheetName(spec.name));
+  }
+  const base = filename.replace(/\.xlsx$/i, '');
+  XLSX.writeFile(wb, `${base}.xlsx`, { bookType: 'xlsx', compression: true });
+}
+
 export function buildWorkbook(
   headers: string[],
   rows: ExportRow[],
