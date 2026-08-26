@@ -1,0 +1,18 @@
+# Dependencies & build
+node_modules/
+dist/
+.DS_Store
+*.local
+
+# Claim / deduction data — never commit
+*.xlsx
+*.xls
+*.csv
+
+# Conversation export replaced by the markdown spec
+*.docx
+
+# Local scratch
+__pycache__/
+*.pyc
+.temp/

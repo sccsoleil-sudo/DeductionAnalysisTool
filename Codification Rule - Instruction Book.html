@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logistics Master Dashboard — Codification Rule Instruction Book</title>
+  <style>
+    :root {
+      --clr-primary: #1a3a5c;
+      --clr-accent:  #1b8f67;
+      --clr-warn:    #c98512;
+      --clr-danger:  #cf4c4c;
+      --clr-muted:   #64748b;
+      --clr-border:  #e2e8f0;
+      --clr-bg:      #f8fafc;
+      --clr-white:   #ffffff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.65;
+      color: #1e293b;
+      background: var(--clr-bg);
+    }
+
+    /* ── Cover ── */
+    .cover {
+      background: linear-gradient(135deg, #1a3a5c 0%, #0f2540 100%);
+      color: #fff;
+      padding: 72px 64px 60px;
+      page-break-after: always;
+    }
+    .cover-logo { font-size: 2.2rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; }
+    .cover-sub  { font-size: 1rem; opacity: .7; margin-bottom: 48px; }
+    .cover h1   { font-size: 2.6rem; font-weight: 800; line-height: 1.2; margin-bottom: 12px; }
+    .cover p    { font-size: 1.05rem; opacity: .8; max-width: 560px; }
+    .cover-meta { margin-top: 56px; font-size: .85rem; opacity: .55; }
+
+    /* ── Layout ── */
+    .page { max-width: 900px; margin: 0 auto; padding: 40px 48px; }
+
+    /* ── TOC ── */
+    .toc { background: #fff; border: 1px solid var(--clr-border); border-radius: 10px; padding: 28px 32px; margin-bottom: 40px; }
+    .toc h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: .08em; color: var(--clr-muted); margin-bottom: 16px; }
+    .toc ol  { padding-left: 20px; }
+    .toc li  { margin-bottom: 5px; }
+    .toc a   { color: var(--clr-primary); text-decoration: none; font-weight: 500; }
+    .toc a:hover { text-decoration: underline; }
+
+    /* ── Sections ── */
+    .section {
+      background: var(--clr-white);
+      border: 1px solid var(--clr-border);
+      border-radius: 10px;
+      padding: 32px 36px;
+      margin-bottom: 28px;
+      page-break-inside: avoid;
+    }
+    .section-number {
+      display: inline-block;
+      background: var(--clr-primary);
+      color: #fff;
+      font-size: .7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    h2 { font-size: 1.35rem; font-weight: 700; color: var(--clr-primary); margin-bottom: 14px; }
+    h3 { font-size: 1rem; font-weight: 700; color: #1e293b; margin: 20px 0 8px; }
+    p  { margin-bottom: 10px; color: #334155; }
+    ul, ol { padding-left: 22px; margin-bottom: 12px; color: #334155; }
+    li { margin-bottom: 4px; }
+
+    /* ── Tables ── */
+    table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .88rem; }
+    thead tr { background: var(--clr-primary); color: #fff; }
+    thead th { padding: 9px 12px; text-align: left; font-weight: 600; letter-spacing: .03em; }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    tbody td { padding: 8px 12px; border-bottom: 1px solid #e9eef4; vertical-align: top; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    /* ── Callout boxes ── */
+    .callout {
+      border-left: 4px solid var(--clr-accent);
+      background: #f0fdf6;
+      padding: 12px 16px;
+      border-radius: 0 6px 6px 0;
+      margin: 14px 0;
+    }
+    .callout.warn  { border-color: var(--clr-warn);   background: #fffbeb; }
+    .callout.danger{ border-color: var(--clr-danger);  background: #fef2f2; }
+    .callout strong { color: inherit; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+    .badge-r02     { background: #dbeafe; color: #1e3a8a; }
+    .badge-r16     { background: #fce7f3; color: #831843; }
+    .badge-r17     { background: #fef9c3; color: #713f12; }
+    .badge-green   { background: #dcfce7; color: #14532d; }
+    .badge-red     { background: #fee2e2; color: #7f1d1d; }
+    .badge-amber   { background: #fef3c7; color: #78350f; }
+    .badge-blue    { background: #dbeafe; color: #1e3a8a; }
+    .badge-gray    { background: #f1f5f9; color: #475569; }
+
+    /* ── Flow diagram ── */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 16px 0;
+    }
+    .flow-step {
+      background: var(--clr-primary);
+      color: #fff;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: .82rem;
+      font-weight: 600;
+    }
+    .flow-arrow { color: var(--clr-muted); font-size: 1.1rem; }
+
+    /* ── Code ── */
+    code {
+      background: #f1f5f9;
+      color: #1e293b;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: .85em;
+    }
+
+    /* ── Print ── */
+    @media print {
+      body { background: #fff; }
+      .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .section { page-break-inside: avoid; }
+      table { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     COVER PAGE
+     ══════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-logo">⚙ Logistics Master Dashboard</div>
+  <div class="cover-sub">Internal Reference Document</div>
+  <h1>Codification Rule<br>Instruction Book</h1>
+  <p>Complete guide to data codification standards, reason codes, classification rules, and upload requirements for the Logistics Master Dashboard.</p>
+  <div class="cover-meta">Version 1.0 &nbsp;·&nbsp; Logistics Finance Team</div>
+</div>
+
+<div class="page">
+
+<!-- ══════════════════════════════════════════
+     TABLE OF CONTENTS
+     ══════════════════════════════════════════ -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><a href="#s1">Overview — How the Dashboard Works</a></li>
+    <li><a href="#s2">Required Excel Columns</a></li>
+    <li><a href="#s3">Reason Codes (R02 · R16 · R17)</a></li>
+    <li><a href="#s4">Reference Key 2 — R02 Shortage Claims</a></li>
+    <li><a href="#s5">Reference Key 2 — R16 Penalties &amp; Fines</a></li>
+    <li><a href="#s6">Open vs. Closed Logic</a></li>
+    <li><a href="#s7">Outcome Classification Rules</a></li>
+    <li><a href="#s8">Recovery Rate Calculation</a></li>
+    <li><a href="#s9">Division Codes</a></li>
+    <li><a href="#s10">Amazon R17 — Potential Shortage</a></li>
+    <li><a href="#s11">Baseline vs. Regular Refresh</a></li>
+    <li><a href="#s12">PMT / Payback Offset Rows</a></li>
+    <li><a href="#s13">Status &amp; Dispute Classification</a></li>
+    <li><a href="#s14">Upload Workflow Step-by-Step</a></li>
+    <li><a href="#s15">Common Mistakes &amp; FAQs</a></li>
+  </ol>
+</div>
+
+
+<!-- ══ SECTION 1 ══════════════════════════════ -->
+<div class="section" id="s1">
+  <span class="section-number">Section 1</span>
+  <h2>Overview — How the Dashboard Works</h2>
+  <p>The Logistics Master Dashboard reads deduction/claim data from an Excel file (.xlsx or .xls), stores it in a local database, and produces KPI metrics, charts, and management views.</p>
+
+  <div class="flow">
+    <div class="flow-step">Excel Upload</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Normalize Columns</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Compute Open/Closed</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Save to Database</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Classify Outcomes</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">Dashboard KPIs</div>
+  </div>
+
+  <p>The dashboard has two primary report tabs:</p>
+  <table>
+    <thead><tr><th>Tab</th><th>Reason Code</th><th>What It Tracks</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Shortage Claims</strong></td>
+        <td><span class="badge badge-r02">R02</span></td>
+        <td>Customer deductions for shipping shortages — tracks outcomes: Recovered, Lost, Actual Shortage, Open</td>
+      </tr>
+      <tr>
+        <td><strong>Penalties &amp; Fines</strong></td>
+        <td><span class="badge badge-r16">R16</span></td>
+        <td>Compliance penalties (Fill Rate, EDI, DC Charges, Delivery, Commercial) — closed items only</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>Key rule:</strong> Every row in your Excel must have a valid <code>Reason Code</code> (<code>R02</code> or <code>R16</code>). Rows without a matching reason code will not appear in either tab.
+  </div>
+</div>
+
+
+<!-- ══ SECTION 2 ══════════════════════════════ -->
+<div class="section" id="s2">
+  <span class="section-number">Section 2</span>
+  <h2>Required Excel Columns</h2>
+  <p>The system expects SAP-style column names exactly as listed below. Column names are stripped of leading/trailing spaces but are otherwise case-sensitive.</p>
+
+  <table>
+    <thead><tr><th>Column Name</th><th>Required?</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>Reason Code</code></td><td><span class="badge badge-red">Required</span></td><td>Must be R02, R16, or R17. Determines which dashboard tab the row appears in.</td></tr>
+      <tr><td><code>Reference Key 2</code></td><td><span class="badge badge-red">Required</span></td><td>Subcategory code. Drives outcome classification (Recovered/Lost/Shortage). See Sections 4 &amp; 5.</td></tr>
+      <tr><td><code>Amount (CoCode Crcy)</code></td><td><span class="badge badge-red">Required</span></td><td>Deduction/penalty amount in company code currency.</td></tr>
+      <tr><td><code>Customer Name</code></td><td><span class="badge badge-red">Required</span></td><td>Customer name. Used for filtering, customer overview, and Top 5 charts.</td></tr>
+      <tr><td><code>Journal Entry Date</code></td><td><span class="badge badge-red">Required</span></td><td>Claim entry date. Used for all time-based filtering and period reports.</td></tr>
+      <tr><td><code>Business Area</code></td><td><span class="badge badge-amber">Recommended</span></td><td>Division code (e.g. <code>02AA</code>). Required for division filter and division breakdown charts.</td></tr>
+      <tr><td><code>Clearing Status</code></td><td><span class="badge badge-amber">Recommended</span></td><td>Numeric. <code>1</code> = open, <code>0</code> = closed. Primary source for open/closed logic.</td></tr>
+      <tr><td><code>Clearing Journal Entry</code></td><td><span class="badge badge-amber">Recommended</span></td><td>Fallback for open/closed: blank = open, populated = closed.</td></tr>
+      <tr><td><code>Clearing Date</code></td><td><span class="badge badge-amber">Recommended</span></td><td>Date the item was cleared. Used in historical period-snapshot reports.</td></tr>
+      <tr><td><code>Dispute Status</code></td><td><span class="badge badge-amber">Recommended</span></td><td>Open-item status (e.g. "Under Review", "Not Justified", "New"). Drives status breakdown charts.</td></tr>
+      <tr><td><code>Assignment</code></td><td><span class="badge badge-gray">Optional</span></td><td>Used as part of the unique row identifier (business key). Also used to identify Amazon rows by customer number.</td></tr>
+      <tr><td><code>Payment Reference</code></td><td><span class="badge badge-gray">Optional</span></td><td>Part of the unique row identifier (business key).</td></tr>
+      <tr><td><code>Invoice Reference</code></td><td><span class="badge badge-gray">Optional</span></td><td>Part of the unique row identifier (business key).</td></tr>
+      <tr><td><code>Journal Entry</code></td><td><span class="badge badge-gray">Optional</span></td><td>Part of the unique row identifier (business key).</td></tr>
+      <tr><td><code>Item Text</code></td><td><span class="badge badge-gray">Optional</span></td><td>Row description. Used in management detail views.</td></tr>
+      <tr><td><code>Dispute Reason</code></td><td><span class="badge badge-gray">Optional</span></td><td>Reason for dispute. Stored and displayed in management views.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <strong>Multi-sheet files:</strong> If your Excel file has multiple sheets, all sheets will be concatenated into a single dataset. Ensure every sheet uses the same column names.
+  </div>
+</div>
+
+
+<!-- ══ SECTION 3 ══════════════════════════════ -->
+<div class="section" id="s3">
+  <span class="section-number">Section 3</span>
+  <h2>Reason Codes</h2>
+  <p>The <code>Reason Code</code> column determines which report tab a row is assigned to. Only the three codes below are recognized.</p>
+
+  <table>
+    <thead><tr><th>Reason Code</th><th>Dashboard Tab</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-r02">R02</span></td>
+        <td>Shortage Claims</td>
+        <td>Short-shipped deduction claims from customers. Tracked through Recovered / Lost / Actual Shortage / Open outcomes. This is the primary reporting tab.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-r16">R16</span></td>
+        <td>Penalties &amp; Fines</td>
+        <td>Compliance-based penalty charges. Categorized by root cause (Fill Rate, EDI, DC Charges, Delivery, Commercial). Only <strong>closed</strong> R16 rows are counted in penalty analytics.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-r17">R17</span></td>
+        <td>Supplemental (Amazon only)</td>
+        <td>Potential shortage claims from Amazon. Not a standalone tab — appears as a supplemental KPI card on the R02 view when Amazon is selected in the customer filter.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout danger">
+    <strong>Important:</strong> Reason codes are stored and compared in UPPERCASE. Values like <code>r02</code> or <code>R 02</code> (with space) will not match. Ensure no leading/trailing spaces.
+  </div>
+</div>
+
+
+<!-- ══ SECTION 4 ══════════════════════════════ -->
+<div class="section" id="s4">
+  <span class="section-number">Section 4</span>
+  <h2>Reference Key 2 — R02 Shortage Claims</h2>
+  <p>For R02 rows, the <code>Reference Key 2</code> column drives the <strong>outcome classification</strong>. Use the codes below exactly as shown.</p>
+
+  <table>
+    <thead><tr><th>Code</th><th>Label</th><th>Outcome</th><th>When to Use</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>PAYBACK</code> or <em>blank</em></td>
+        <td>Payback</td>
+        <td><span class="badge badge-green">Recovered</span></td>
+        <td>Customer agreed to repay the deduction. A blank Reference Key 2 on a closed item is treated as Payback.</td>
+      </tr>
+      <tr>
+        <td><code>RET</code></td>
+        <td>Return</td>
+        <td><span class="badge badge-green">Recovered</span></td>
+        <td>Goods were physically returned to the warehouse. Resolves the claim.</td>
+      </tr>
+      <tr>
+        <td><code>RT</code></td>
+        <td>Return</td>
+        <td><span class="badge badge-green">Recovered</span></td>
+        <td>Alternative return code. Same outcome as <code>RET</code>.</td>
+      </tr>
+      <tr>
+        <td><code>R1R2</code></td>
+        <td>Dummy PO</td>
+        <td><span class="badge badge-green">Recovered</span></td>
+        <td>Claim resolved via a dummy purchase order arrangement.</td>
+      </tr>
+      <tr>
+        <td><code>COM</code> or <code>COM*</code></td>
+        <td>Refuse to Pay</td>
+        <td><span class="badge badge-red">Lost</span></td>
+        <td>Customer refuses to pay the deduction. Any code beginning with <code>COM</code> (e.g. <code>COMM</code>, <code>COM01</code>) is classified as Lost.</td>
+      </tr>
+      <tr>
+        <td>contains <code>WO</code></td>
+        <td>Write Off</td>
+        <td><span class="badge badge-red">Lost</span></td>
+        <td>Amount was written off internally. Any code containing "WO" (e.g. <code>WO</code>, <code>WO01</code>) is classified as Lost.</td>
+      </tr>
+      <tr>
+        <td><code>SHO</code></td>
+        <td>Shortage</td>
+        <td><span class="badge badge-amber">Actual Shortage</span></td>
+        <td>Confirmed real shortage — goods were genuinely not shipped. A separate financial reserve outcome.</td>
+      </tr>
+      <tr>
+        <td><code>PMT</code></td>
+        <td>Payback Offset</td>
+        <td><em>Excluded</em></td>
+        <td>Payment offset row used for netting. These rows are <strong>excluded from all KPI calculations</strong> and shown separately as "Identified Payback (excluded)". See Section 12.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>Open items:</strong> If a row is open (<code>Clearing Status = 1</code>), the <code>Reference Key 2</code> value is <strong>ignored for outcome classification</strong>. The row is counted under "Open (Actionable)" regardless of its code. Outcome is only assigned once the item is closed.
+  </div>
+
+  <h3>R02 Classification Summary</h3>
+  <table>
+    <thead><tr><th>Outcome</th><th>Codes That Map to It</th><th>What It Means</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge badge-green">Recovered</span></td><td><code>""</code>, <code>PAYBACK</code>, <code>RET</code>, <code>RT</code>, <code>R1R2</code></td><td>Money was recovered from the customer</td></tr>
+      <tr><td><span class="badge badge-red">Lost</span></td><td><code>COM*</code>, <code>*WO*</code></td><td>The deduction was not recoverable</td></tr>
+      <tr><td><span class="badge badge-amber">Actual Shortage</span></td><td><code>SHO</code></td><td>Confirmed real shortage, reserved separately</td></tr>
+      <tr><td><span class="badge badge-blue">Open</span></td><td><em>any code, if row is open</em></td><td>Still in dispute — not yet resolved</td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ══ SECTION 5 ══════════════════════════════ -->
+<div class="section" id="s5">
+  <span class="section-number">Section 5</span>
+  <h2>Reference Key 2 — R16 Penalties &amp; Fines</h2>
+  <p>For R16 rows, <code>Reference Key 2</code> determines the <strong>penalty category</strong>. Only closed R16 rows are counted in penalty analytics.</p>
+
+  <table>
+    <thead><tr><th>Code</th><th>Category Label</th><th>When to Use</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>FR</code></td>
+        <td>Fill Rate</td>
+        <td>Penalty charged because the order fill rate fell below the contractual threshold.</td>
+      </tr>
+      <tr>
+        <td><code>EDI</code></td>
+        <td>EDI</td>
+        <td>Penalty for EDI compliance failures (incorrect/late ASN, PO acknowledgement errors, etc.).</td>
+      </tr>
+      <tr>
+        <td><code>PREP</code></td>
+        <td>DC Charges</td>
+        <td>Distribution centre preparation/handling charges applied by the customer.</td>
+      </tr>
+      <tr>
+        <td><code>SHIP</code></td>
+        <td>Delivery</td>
+        <td>Delivery compliance penalties — late delivery, wrong carrier, routing violations.</td>
+      </tr>
+      <tr>
+        <td><code>KAM</code></td>
+        <td>Commercial</td>
+        <td>Commercial/contractual deductions negotiated or agreed at the account level.</td>
+      </tr>
+      <tr>
+        <td><em>blank or unknown</em></td>
+        <td>Unclassified</td>
+        <td>No recognized code. The amount will appear under "Unclassified" in the penalty category chart.</td>
+      </tr>
+      <tr>
+        <td><code>XXX</code></td>
+        <td><em>Excluded</em></td>
+        <td>Internal noise/offset rows. Excluded from all R16 analytics (equivalent to PMT for R02).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <strong>R16 display order:</strong> Categories always appear in this fixed order on the dashboard — Fill Rate → EDI → DC Charges → Delivery → Commercial → Unclassified. This order reflects business priority for root-cause analysis.
+  </div>
+
+  <div class="callout">
+    <strong>Open R16 rows:</strong> Open R16 rows are completely excluded from all penalty analytics. Only assign R16 to rows once the penalty is confirmed and cleared.
+  </div>
+</div>
+
+
+<!-- ══ SECTION 6 ══════════════════════════════ -->
+<div class="section" id="s6">
+  <span class="section-number">Section 6</span>
+  <h2>Open vs. Closed Logic</h2>
+  <p>Whether a row is "open" (still in dispute) or "closed" (resolved) is determined automatically from two possible columns, in priority order:</p>
+
+  <table>
+    <thead><tr><th>Priority</th><th>Column</th><th>Open Condition</th><th>Closed Condition</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>1st</td>
+        <td><code>Clearing Status</code></td>
+        <td>Value = <code>1</code></td>
+        <td>Value = <code>0</code></td>
+      </tr>
+      <tr>
+        <td>2nd</td>
+        <td><code>Clearing Journal Entry</code></td>
+        <td>Cell is blank / null</td>
+        <td>Cell has a value (journal entry number)</td>
+      </tr>
+      <tr>
+        <td>Fallback</td>
+        <td><em>Neither column present</em></td>
+        <td colspan="2">All rows treated as <strong>open</strong> by default</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <strong>Best practice:</strong> Always include the <code>Clearing Status</code> column. It is the most reliable and explicit way to mark items as open or closed. If you use <code>Clearing Journal Entry</code> instead, ensure it is populated for every closed item and truly blank for every open item (watch out for formula zeros or placeholder text).
+  </div>
+
+  <h3>Impact of Open/Closed on Calculations</h3>
+  <ul>
+    <li><strong>Open items</strong> contribute to <em>Open (Actionable)</em> in the total exposure. Their <code>Reference Key 2</code> code does not affect outcome classification.</li>
+    <li><strong>Closed items</strong> are classified by their <code>Reference Key 2</code> → Recovered / Lost / Actual Shortage.</li>
+    <li><strong>Recovery rate</strong> is calculated only from closed items and is not affected by how many items remain open.</li>
+    <li><strong>R16 penalties</strong>: open rows are completely excluded from all penalty totals and charts.</li>
+  </ul>
+</div>
+
+
+<!-- ══ SECTION 7 ══════════════════════════════ -->
+<div class="section" id="s7">
+  <span class="section-number">Section 7</span>
+  <h2>Outcome Classification Rules</h2>
+  <p>Once a row is determined to be closed, the system applies the following classification logic based on <code>Reference Key 2</code>:</p>
+
+  <h3>R02 Decision Tree</h3>
+  <ol>
+    <li>Is the row <strong>open</strong>? → Count as <span class="badge badge-blue">Open (Actionable)</span>. Stop.</li>
+    <li>Is <code>Reference Key 2</code> in <code>{"", "PAYBACK", "RET", "RT", "R1R2"}</code>? → <span class="badge badge-green">Recovered</span></li>
+    <li>Does <code>Reference Key 2</code> <strong>start with</strong> <code>COM</code>? → <span class="badge badge-red">Lost</span></li>
+    <li>Does <code>Reference Key 2</code> <strong>contain</strong> <code>WO</code>? → <span class="badge badge-red">Lost</span></li>
+    <li>Is <code>Reference Key 2</code> exactly <code>SHO</code>? → <span class="badge badge-amber">Actual Shortage</span></li>
+    <li>Anything else? → <span class="badge badge-gray">Unclassified</span> (appears in the Unclassified bucket; review and update)</li>
+  </ol>
+
+  <h3>R16 Decision Tree (closed only)</h3>
+  <ol>
+    <li>Is <code>Reference Key 2</code> in <code>{"", "PAYBACK", "RET", "RT", "R1R2"}</code>? → <span class="badge badge-green">Recovered</span></li>
+    <li>Does <code>Reference Key 2</code> start with <code>COM</code>? → <span class="badge badge-red">Lost</span></li>
+    <li>Does <code>Reference Key 2</code> contain <code>WO</code>? → <span class="badge badge-red">Lost</span></li>
+    <li>Otherwise → categorized by penalty category code (FR, EDI, PREP, SHIP, KAM)</li>
+  </ol>
+
+  <div class="callout">
+    <strong>User overrides:</strong> Analysts can manually override the classification of any item directly in the dashboard's Shortage Management or Penalties Management tab. Overrides are stored in the database and take precedence over the coded value in subsequent uploads.
+  </div>
+</div>
+
+
+<!-- ══ SECTION 8 ══════════════════════════════ -->
+<div class="section" id="s8">
+  <span class="section-number">Section 8</span>
+  <h2>Recovery Rate Calculation</h2>
+  <p>The Recovery Rate shown on the dashboard (and in exported reports) measures how much of the <strong>closed</strong> claim value has been recovered. Open items are not included.</p>
+
+  <div style="background:#f8fafc;border:1px solid var(--clr-border);border-radius:8px;padding:20px 24px;margin:14px 0;font-size:.95rem;">
+    <strong>Recovery Rate</strong> =
+    <span style="color:var(--clr-accent);font-weight:700">Recovered (closed)</span>
+    ÷
+    <span style="color:#334155;font-weight:600">( Recovered + Lost + Actual Shortage )</span>
+    × 100
+  </div>
+
+  <table>
+    <thead><tr><th>Component</th><th>Included?</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td>Recovered (closed)</td><td><span class="badge badge-green">Yes</span></td><td>Denominator and numerator</td></tr>
+      <tr><td>Lost (closed)</td><td><span class="badge badge-green">Yes — denominator only</span></td><td>Part of closed universe</td></tr>
+      <tr><td>Actual Shortage (closed)</td><td><span class="badge badge-green">Yes — denominator only</span></td><td>Part of closed universe</td></tr>
+      <tr><td>Open (Actionable)</td><td><span class="badge badge-red">No</span></td><td>Not yet resolved — excluded to avoid distortion</td></tr>
+      <tr><td>PMT / Payback offsets</td><td><span class="badge badge-red">No</span></td><td>Excluded from all KPIs</td></tr>
+    </tbody>
+  </table>
+
+  <p>Example: If closed items = $4.8M recovered, $0.28M lost, $0.03M actual shortage → Recovery rate = 4.8 ÷ (4.8 + 0.28 + 0.03) = <strong>87.7%</strong></p>
+</div>
+
+
+<!-- ══ SECTION 9 ══════════════════════════════ -->
+<div class="section" id="s9">
+  <span class="section-number">Section 9</span>
+  <h2>Division Codes</h2>
+  <p>The <code>Business Area</code> column identifies which division a claim belongs to. Use the exact four-character SAP codes below.</p>
+
+  <table>
+    <thead><tr><th>Business Area Code</th><th>Division Name</th></tr></thead>
+    <tbody>
+      <tr><td><code>02AA</code></td><td>CPD</td></tr>
+      <tr><td><code>02AB</code></td><td>PPD</td></tr>
+      <tr><td><code>02AC</code></td><td>LPD</td></tr>
+      <tr><td><code>02AD</code></td><td>LDB</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <strong>Unknown codes:</strong> Any <code>Business Area</code> value not in the above list will not appear in the Division filter dropdown or division breakdown charts. Rows with an unrecognized or blank <code>Business Area</code> will still be included in totals but will not be attributed to any division.
+  </div>
+</div>
+
+
+<!-- ══ SECTION 10 ══════════════════════════════ -->
+<div class="section" id="s10">
+  <span class="section-number">Section 10</span>
+  <h2>Amazon R17 — Potential Shortage</h2>
+  <p><span class="badge badge-r17">R17</span> rows represent potential shortage claims from Amazon that have been identified but not yet formally charged. They appear as a supplemental card on the R02 dashboard — not a standalone tab.</p>
+
+  <h3>When R17 Is Shown</h3>
+  <p>The R17 potential shortage card only appears when <strong>Amazon is included in the customer filter</strong>. The system identifies Amazon rows by either:</p>
+  <ul>
+    <li>The <code>Customer Name</code> field contains the word <code>AMAZON</code> (case-insensitive), <strong>or</strong></li>
+    <li>The <code>Assignment</code> field contains the customer number <code>10118507</code></li>
+  </ul>
+
+  <h3>How to Code R17 Rows</h3>
+  <table>
+    <thead><tr><th>Column</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td><code>Reason Code</code></td><td><code>R17</code></td></tr>
+      <tr><td><code>Customer Name</code></td><td>Must include "Amazon" or use customer number in <code>Assignment</code></td></tr>
+      <tr><td><code>Reference Key 2</code></td><td>Use same R02 subcategory codes (e.g. <code>SHO</code>, <code>PAYBACK</code>) — R02 labels are applied</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    R17 rows are <strong>never included</strong> in R02 shortage totals. They are tracked separately as a forward-looking risk indicator.
+  </div>
+</div>
+
+
+<!-- ══ SECTION 11 ══════════════════════════════ -->
+<div class="section" id="s11">
+  <span class="section-number">Section 11</span>
+  <h2>Baseline vs. Regular Refresh</h2>
+  <p>The dashboard has two upload modes. Understanding the difference is critical to preserving historical comparison data.</p>
+
+  <table>
+    <thead><tr><th></th><th>Set Baseline</th><th>Upload &amp; Refresh</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Button</strong></td>
+        <td>"Set Baseline"</td>
+        <td>"↑ Upload &amp; Refresh"</td>
+      </tr>
+      <tr>
+        <td><strong>What it does</strong></td>
+        <td>Replaces the reference snapshot used to detect new/changed claims</td>
+        <td>Loads latest data and compares it against the existing baseline to identify changes</td>
+      </tr>
+      <tr>
+        <td><strong>When to use</strong></td>
+        <td>When starting a new tracking period, after major data corrections, or when setting the initial dataset</td>
+        <td>For routine weekly/monthly updates — the most common upload type</td>
+      </tr>
+      <tr>
+        <td><strong>Baseline reset</strong></td>
+        <td>Yes — previous baseline is wiped and replaced</td>
+        <td>No — existing baseline is preserved for comparison</td>
+      </tr>
+      <tr>
+        <td><strong>New/Updated/Removed counters</strong></td>
+        <td>Reset to 0 (no comparison at baseline time)</td>
+        <td>Calculated by diffing against baseline</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Auto-Baseline by Filename</h3>
+  <p>If your Excel file is named <strong><code>LogisticsMasterV1.xlsx</code></strong> (or any variation with only letters/numbers that spell out <code>logisticsmasterv1</code>), the system will automatically treat the upload as a baseline, regardless of which button was used.</p>
+
+  <div class="callout warn">
+    <strong>Clear Baseline button:</strong> The "✕ Clear Baseline" button in the header erases the current baseline from the database. After clearing, the next upload will become the new baseline automatically (since no prior baseline exists).
+  </div>
+
+  <h3>What Happens to Missing Rows During a Refresh</h3>
+  <ul>
+    <li><strong>R02 rows</strong> that existed in the baseline but are absent in the new upload are <em>synthesized as cleared</em> — they are added back with <code>is_open=0</code> and status "Cleared". This prevents them from vanishing from history.</li>
+    <li><strong>Non-R02 rows</strong> that go missing are counted as <em>removed</em>.</li>
+  </ul>
+</div>
+
+
+<!-- ══ SECTION 12 ══════════════════════════════ -->
+<div class="section" id="s12">
+  <span class="section-number">Section 12</span>
+  <h2>PMT / Payback Offset Rows</h2>
+  <p>Rows with <code>Reference Key 2 = PMT</code> are <strong>payment-offset rows</strong> — they represent a negative amount that nets against the gross deduction in the same payment batch.</p>
+
+  <h3>How PMT Rows Are Handled</h3>
+  <table>
+    <thead><tr><th>Where</th><th>Treatment</th></tr></thead>
+    <tbody>
+      <tr><td>All KPI totals (Recovered, Lost, Shortage, Open)</td><td>Excluded</td></tr>
+      <tr><td>Donut charts and bar charts</td><td>Excluded</td></tr>
+      <tr><td>Header KPI — "Total Received Claim"</td><td>Excluded (gross total of non-PMT lines shown)</td></tr>
+      <tr><td>Header — "Identified Payback (excluded)" note</td><td>PMT total amount shown as an informational footnote</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout danger">
+    <strong>Do not use PMT as a general code.</strong> It is a system-reserved exclusion code. Only SAP-generated payment offset entries should carry <code>PMT</code>. Using it for other purposes will cause those rows to disappear from all dashboard metrics.
+  </div>
+
+  <p>The equivalent exclusion code for R16 is <code>XXX</code> — R16 rows with <code>Reference Key 2 = XXX</code> are excluded from all penalty calculations.</p>
+</div>
+
+
+<!-- ══ SECTION 13 ══════════════════════════════ -->
+<div class="section" id="s13">
+  <span class="section-number">Section 13</span>
+  <h2>Status &amp; Dispute Classification</h2>
+  <p>For <strong>open R02 items</strong>, the <code>Dispute Status</code> column drives the status breakdown chart and open-item sub-classification.</p>
+
+  <table>
+    <thead><tr><th>Raw Dispute Status Value</th><th>Dashboard Label</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>Not Justified</code></td><td>To Be Paid</td><td>Customer has acknowledged the claim and agreed to pay</td></tr>
+      <tr><td><code>Under Review</code></td><td>With Client</td><td>Claim is currently under discussion or analysis by the customer</td></tr>
+      <tr><td><code>New</code></td><td>To Analyze (Internal)</td><td>Newly received — not yet reviewed internally</td></tr>
+      <tr><td><code>Closed</code></td><td>Closed</td><td>Marked closed in the dispute system (item should also be cleared)</td></tr>
+      <tr><td><em>blank / unknown</em></td><td>Unclassified</td><td>No status assigned</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Open Item Sub-Buckets (Period Summary Donuts)</h3>
+  <p>In the Period Summary tab, open items are further divided into three buckets:</p>
+  <table>
+    <thead><tr><th>Bucket</th><th>Rule</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-red">Potential Lost</span></td>
+        <td>Open item with <code>Reference Key 2</code> starting with <code>COM</code> or containing <code>WO</code></td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-blue">Recoverable</span></td>
+        <td>Dispute Status is <code>Under Review</code> or <code>Not Justified</code></td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-gray">Pending – In Analysis</span></td>
+        <td>Everything else (New, blank, or unrecognized status)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ══ SECTION 14 ══════════════════════════════ -->
+<div class="section" id="s14">
+  <span class="section-number">Section 14</span>
+  <h2>Upload Workflow — Step by Step</h2>
+
+  <h3>Routine Monthly Update (most common)</h3>
+  <ol>
+    <li>Export your latest claims data from SAP as an <code>.xlsx</code> file.</li>
+    <li>Verify column names match those listed in Section 2.</li>
+    <li>Ensure <code>Reason Code</code> values are <code>R02</code>, <code>R16</code>, or <code>R17</code> in uppercase.</li>
+    <li>Ensure <code>Reference Key 2</code> uses only the approved codes from Sections 4 and 5.</li>
+    <li>Ensure <code>Clearing Status</code> is <code>1</code> (open) or <code>0</code> (closed) for every row.</li>
+    <li>Click <strong>"↑ Upload &amp; Refresh"</strong> in the dashboard header.</li>
+    <li>Select your file. The dashboard will update automatically.</li>
+  </ol>
+
+  <h3>Initial Setup / Baseline Reset</h3>
+  <ol>
+    <li>Prepare your full historical dataset as an <code>.xlsx</code> file.</li>
+    <li>Click <strong>"Set Baseline"</strong> in the dashboard header (or name the file <code>LogisticsMasterV1.xlsx</code> and use "Upload &amp; Refresh").</li>
+    <li>Confirm the baseline name appears in the top-right of the header after upload.</li>
+  </ol>
+
+  <div class="callout">
+    <strong>File format:</strong> Both <code>.xlsx</code> (Excel 2007+) and <code>.xls</code> (Excel 97–2003) are supported. CSV files are not supported.
+  </div>
+</div>
+
+
+<!-- ══ SECTION 15 ══════════════════════════════ -->
+<div class="section" id="s15">
+  <span class="section-number">Section 15</span>
+  <h2>Common Mistakes &amp; FAQs</h2>
+
+  <h3>Q: My total on the dashboard doesn't match my spreadsheet total.</h3>
+  <p>Check these common causes:</p>
+  <ul>
+    <li>You are filtering by year or division — remove all filters and compare again.</li>
+    <li>Rows with <code>Reference Key 2 = PMT</code> are excluded from the main total but shown in the "Identified Payback" note.</li>
+    <li>R17 rows are not included in R02 totals.</li>
+    <li>R16 open rows are excluded from all R16 totals.</li>
+  </ul>
+
+  <h3>Q: My Recovery Rate looks wrong — it's too low.</h3>
+  <ul>
+    <li>Recovery rate only uses <strong>closed items</strong>. A large number of open items will not reduce the rate — they are excluded.</li>
+    <li>Verify items you expect to be "Recovered" have a blank, <code>PAYBACK</code>, <code>RET</code>, <code>RT</code>, or <code>R1R2</code> Reference Key 2 and are actually closed (<code>Clearing Status = 0</code>).</li>
+  </ul>
+
+  <h3>Q: Items are not appearing in any chart.</h3>
+  <ul>
+    <li>Check that <code>Reason Code</code> is exactly <code>R02</code> or <code>R16</code> (uppercase, no spaces).</li>
+    <li>Check that <code>Journal Entry Date</code> is a valid date. Rows with unparseable dates may be excluded from date-filtered views.</li>
+  </ul>
+
+  <h3>Q: An item appears as "Unclassified".</h3>
+  <p>The <code>Reference Key 2</code> value does not match any recognized code. Options:</p>
+  <ul>
+    <li>Correct the code in the Excel file and re-upload.</li>
+    <li>Use the manual override feature in the Shortage Management tab to reclassify the item directly in the dashboard.</li>
+  </ul>
+
+  <h3>Q: What happens if I upload the same file twice?</h3>
+  <p>The system uses a <strong>business key</strong> (combination of Customer Name, Assignment, Payment Reference, Invoice Reference, Reason Code, Journal Entry, and Amount) to identify unique rows. Duplicate uploads will overwrite existing rows with the same key — no duplicate entries will be created.</p>
+
+  <h3>Q: Can I have multiple sheets in my Excel file?</h3>
+  <p>Yes. All sheets are concatenated into a single dataset. Ensure all sheets use the same column names (including capitalization).</p>
+
+  <h3>Q: Why does the "Clear Baseline" button erase my history?</h3>
+  <p>It only clears the <em>baseline reference snapshot</em> used for change detection (new/updated/removed row counts). It does <strong>not</strong> delete your current live data. After clearing, the next upload will become the new baseline.</p>
+</div>
+
+<!-- ── Footer ── -->
+<div style="text-align:center;color:var(--clr-muted);font-size:.8rem;padding:32px 0 16px;border-top:1px solid var(--clr-border);margin-top:16px;">
+  Logistics Master Dashboard — Codification Rule Instruction Book &nbsp;·&nbsp; Internal Use Only
+</div>
+
+</div><!-- /page -->
+</body>
+</html>
