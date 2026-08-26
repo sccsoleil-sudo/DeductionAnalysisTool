@@ -9,9 +9,11 @@ import {
   byOpenBucket,
   byOutcome,
   customerComparison,
-  inYtd,
+  inPeriod,
   monthlySeries,
+  periodRangeLabel,
   periodTotals,
+  yearPeriodLabel,
   type Filters,
 } from '../lib/metrics';
 import type { ClaimRow } from '../lib/types';
@@ -38,51 +40,52 @@ interface ShortageTabProps {
 }
 
 export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
-  const { asOf, basis } = filters;
+  const { asOf } = filters;
   const currentYear = asOf.getFullYear();
   const lastYear = currentYear - 1;
-  const cyLabel = `${currentYear} YTD`;
-  const lyLabel = `${lastYear} YTD`;
+  const cyLabel = yearPeriodLabel(currentYear, filters);
+  const lyLabel = yearPeriodLabel(lastYear, filters);
+  const rangeLabel = periodRangeLabel(filters);
 
   const cy = useMemo(
-    () => periodTotals(rows, asOf, currentYear, basis),
-    [rows, asOf, currentYear, basis],
+    () => periodTotals(rows, filters, currentYear),
+    [rows, filters, currentYear],
   );
   const ly = useMemo(
-    () => periodTotals(rows, asOf, lastYear, basis),
-    [rows, asOf, lastYear, basis],
+    () => periodTotals(rows, filters, lastYear),
+    [rows, filters, lastYear],
   );
 
   const cyRows = useMemo(
-    () => rows.filter((r) => inYtd(r, asOf, currentYear, basis)),
-    [rows, asOf, currentYear, basis],
+    () => rows.filter((r) => inPeriod(r, filters, currentYear)),
+    [rows, filters, currentYear],
   );
 
   const amazon = useMemo(
-    () => amazonPotentialShortage(allRows, asOf, currentYear, basis),
-    [allRows, asOf, currentYear, basis],
+    () => amazonPotentialShortage(allRows, filters, currentYear),
+    [allRows, filters, currentYear],
   );
 
   const divisionCy = useMemo(() => byDivision(cyRows), [cyRows]);
   const divisionLy = useMemo(
-    () => byDivision(rows.filter((r) => inYtd(r, asOf, lastYear, basis))),
-    [rows, asOf, lastYear, basis],
+    () => byDivision(rows.filter((r) => inPeriod(r, filters, lastYear))),
+    [rows, filters, lastYear],
   );
 
   const outcomes = useMemo(() => byOutcome(cyRows), [cyRows]);
   const openBuckets = useMemo(() => byOpenBucket(cyRows), [cyRows]);
   const disputeStatuses = useMemo(() => byDisputeStatus(cyRows), [cyRows]);
   const topCustomers = useMemo(
-    () => customerComparison(rows, asOf, currentYear, basis, 10),
-    [rows, asOf, currentYear, basis],
+    () => customerComparison(rows, filters, currentYear, 10),
+    [rows, filters, currentYear],
   );
   const topOpen = useMemo(
     () => byCustomer(cyRows.filter((r) => r.isOpen), 5),
     [cyRows],
   );
 
-  const monthlyLy = useMemo(() => monthlySeries(rows, lastYear, basis), [rows, lastYear, basis]);
-  const monthlyCy = useMemo(() => monthlySeries(rows, currentYear, basis), [rows, currentYear, basis]);
+  const monthlyLy = useMemo(() => monthlySeries(rows, lastYear, filters), [rows, lastYear, filters]);
+  const monthlyCy = useMemo(() => monthlySeries(rows, currentYear, filters), [rows, currentYear, filters]);
 
   const headlineConfig = useMemo(
     () =>
@@ -204,7 +207,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     <>
       <SectionCard
         title="Key metrics"
-        subtitle={`${lyLabel} vs ${cyLabel}, cut off at ${longDate(asOf)}`}
+        subtitle={`${lyLabel} vs ${cyLabel} · ${rangeLabel}, cut off at ${longDate(asOf)}`}
         csv={kpiCsv}
       >
         <div className="grid grid-4 kpi-grid">
@@ -272,7 +275,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
       <div className="grid grid-2">
         <SectionCard
           title={`Year-on-year comparison — ${lyLabel} vs ${cyLabel}`}
-          subtitle={`Same calendar window in both years, cut off at ${longDate(asOf)}.`}
+          subtitle={`Same months in both years (${rangeLabel}), cut off at ${longDate(asOf)}.`}
           csv={{
             filename: 'shortage-yoy-comparison',
             headers: ['Metric', lyLabel, cyLabel],
@@ -328,7 +331,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
 
         <SectionCard
           title="Monthly deduction trend"
-          subtitle="Full calendar year, both periods."
+          subtitle={`Selected months only (${rangeLabel}).`}
           csv={{
             filename: 'shortage-monthly-trend',
             headers: ['Month', String(lastYear), String(currentYear)],

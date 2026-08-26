@@ -1,5 +1,6 @@
 import type { ClaimRow, ParseResult } from './types';
 import type { Filters } from './metrics';
+import { defaultMonths } from './metrics';
 
 const DB_NAME = 'lmd-dashboard';
 const DB_VERSION = 1;
@@ -44,6 +45,7 @@ interface StoredSession {
     customers: string[];
     basis: Filters['basis'];
     asOf: string;
+    months?: number[];
   };
   parse: {
     fileName: string;
@@ -175,6 +177,7 @@ function toStored(session: SessionSnapshot): StoredSession {
       customers: session.filters.customers,
       basis: session.filters.basis,
       asOf: session.filters.asOf.toISOString(),
+      months: session.filters.months,
     },
     parse: {
       fileName: session.parse.fileName,
@@ -188,13 +191,15 @@ function toStored(session: SessionSnapshot): StoredSession {
 }
 
 function fromStored(stored: StoredSession): SessionSnapshot {
+  const asOf = new Date(stored.filters.asOf);
   return {
     tab: stored.tab,
     filters: {
       divisions: stored.filters.divisions,
       customers: stored.filters.customers,
       basis: stored.filters.basis,
-      asOf: new Date(stored.filters.asOf),
+      asOf,
+      months: stored.filters.months ?? defaultMonths(asOf),
     },
     parse: {
       fileName: stored.parse.fileName,

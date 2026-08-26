@@ -1,4 +1,10 @@
-import type { Filters, PeriodBasis } from '../lib/metrics';
+import {
+  defaultMonths,
+  isYtdMonthSelection,
+  MONTH_LABELS,
+  type Filters,
+  type PeriodBasis,
+} from '../lib/metrics';
 import { isoDate } from '../lib/format';
 
 interface FiltersBarProps {
@@ -23,6 +29,30 @@ export function FiltersBar({
       ? filters.divisions.filter((d) => d !== division)
       : [...filters.divisions, division];
     onChange({ ...filters, divisions: next });
+  }
+
+  function toggleMonth(month: number) {
+    const selected = new Set(filters.months);
+    if (selected.has(month)) {
+      if (selected.size === 1) return;
+      selected.delete(month);
+    } else {
+      selected.add(month);
+    }
+    onChange({ ...filters, months: [...selected].sort((a, b) => a - b) });
+  }
+
+  function setMonths(months: number[]) {
+    onChange({ ...filters, months: [...months].sort((a, b) => a - b) });
+  }
+
+  function handleAsOfChange(nextAsOf: Date) {
+    const wasYtd = isYtdMonthSelection(filters.months, filters.asOf);
+    onChange({
+      ...filters,
+      asOf: nextAsOf,
+      months: wasYtd ? defaultMonths(nextAsOf) : filters.months,
+    });
   }
 
   return (
@@ -68,7 +98,7 @@ export function FiltersBar({
         </div>
 
         <div className="field">
-          <span className="field-label">YTD as of</span>
+          <span className="field-label">As of date</span>
           <input
             type="date"
             value={isoDate(filters.asOf)}
@@ -76,7 +106,7 @@ export function FiltersBar({
             max={isoDate(maxDate)}
             onChange={(e) => {
               const [y, m, d] = e.target.value.split('-').map(Number);
-              if (y && m && d) onChange({ ...filters, asOf: new Date(y, m - 1, d) });
+              if (y && m && d) handleAsOfChange(new Date(y, m - 1, d));
             }}
           />
         </div>
@@ -91,13 +121,48 @@ export function FiltersBar({
             <option value="clearing">Clearing Date (when settled)</option>
           </select>
         </div>
+      </div>
+
+      <div className="filters" style={{ marginTop: 12, marginBottom: 0 }}>
+        <div className="field" style={{ flex: 1 }}>
+          <span className="field-label">Analysis months</span>
+          <div className="chip-row">
+            <button
+              className={`chip${isYtdMonthSelection(filters.months, filters.asOf) ? ' on' : ''}`}
+              onClick={() => setMonths(defaultMonths(filters.asOf))}
+            >
+              YTD
+            </button>
+            <button
+              className={`chip${filters.months.length === 12 ? ' on' : ''}`}
+              onClick={() => setMonths(MONTH_LABELS.map((_, i) => i))}
+            >
+              All 12
+            </button>
+            {MONTH_LABELS.map((label, index) => (
+              <button
+                key={label}
+                className={`chip${filters.months.includes(index) ? ' on' : ''}`}
+                onClick={() => toggleMonth(index)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="field">
           <span className="field-label">&nbsp;</span>
           <button
             className="chip"
             onClick={() =>
-              onChange({ ...filters, divisions: [], customers: [], basis: 'journal', asOf: maxDate })
+              onChange({
+                divisions: [],
+                customers: [],
+                basis: 'journal',
+                asOf: maxDate,
+                months: defaultMonths(maxDate),
+              })
             }
           >
             Reset filters

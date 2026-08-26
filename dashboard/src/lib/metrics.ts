@@ -10,11 +10,69 @@ import type { ClaimRow, NamedTotal, PeriodTotals } from './types';
 
 export type PeriodBasis = 'journal' | 'clearing';
 
+export const MONTH_LABELS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+
 export interface Filters {
   divisions: string[];
   customers: string[];
   basis: PeriodBasis;
   asOf: Date;
+  /** Calendar months included in analysis (0 = Jan … 11 = Dec). */
+  months: number[];
+}
+
+/** Default YTD month selection: January through the as-of month. */
+export function defaultMonths(asOf: Date): number[] {
+  return Array.from({ length: asOf.getMonth() + 1 }, (_, i) => i);
+}
+
+export function isYtdMonthSelection(months: number[], asOf: Date): boolean {
+  const expected = defaultMonths(asOf);
+  if (months.length !== expected.length) return false;
+  return expected.every((m, i) => months[i] === m);
+}
+
+/** Human label for charts, e.g. "2026 YTD" or "2026 Jan–Aug" or "2026 (Mar, Jun)". */
+export function yearPeriodLabel(year: number, filters: Filters): string {
+  const sorted = [...filters.months].sort((a, b) => a - b);
+  if (sorted.length === 0) return String(year);
+  if (sorted.length === 12) return String(year);
+  if (isYtdMonthSelection(sorted, filters.asOf) && year === filters.asOf.getFullYear()) {
+    return `${year} YTD`;
+  }
+  if (year === filters.asOf.getFullYear() - 1 && isYtdMonthSelection(sorted, filters.asOf)) {
+    return `${year} YTD`;
+  }
+  const contiguous = sorted.every((m, i) => i === 0 || m === sorted[i - 1]! + 1);
+  if (contiguous) {
+    return `${year} ${MONTH_LABELS[sorted[0]!]}–${MONTH_LABELS[sorted[sorted.length - 1]!]}`;
+  }
+  return `${year} (${sorted.map((m) => MONTH_LABELS[m]).join(', ')})`;
+}
+
+export function periodRangeLabel(filters: Filters): string {
+  const sorted = [...filters.months].sort((a, b) => a - b);
+  if (sorted.length === 12) return 'Full calendar year';
+  if (isYtdMonthSelection(sorted, filters.asOf)) {
+    return `Jan 1 → ${MONTH_LABELS[filters.asOf.getMonth()]} ${filters.asOf.getDate()}`;
+  }
+  if (sorted.every((m, i) => i === 0 || m === sorted[i - 1]! + 1)) {
+    return `${MONTH_LABELS[sorted[0]!]}–${MONTH_LABELS[sorted[sorted.length - 1]!]}`;
+  }
+  return sorted.map((m) => MONTH_LABELS[m]).join(', ');
 }
 
 export function sum<T>(items: T[], pick: (item: T) => number): number;
@@ -46,11 +104,26 @@ export function ytdWindow(asOf: Date, year: number): { start: Date; end: Date } 
   return { start, end };
 }
 
+/**
+ * Whether a row falls in the analysis window for a given year.
+ * Month must be selected; the as-of month is capped at the as-of day for YTD parity.
+ */
+export function inPeriod(row: ClaimRow, filters: Filters, year: number): boolean {
+  const d = dateFor(row, filters.basis);
+  if (!d || d.getFullYear() !== year) return false;
+  if (!filters.months.includes(d.getMonth())) return false;
+
+  const capMonth = filters.asOf.getMonth();
+  if (d.getMonth() === capMonth) {
+    const cap = new Date(year, capMonth, filters.asOf.getDate(), 23, 59, 59, 999);
+    return d <= cap;
+  }
+  return true;
+}
+
+/** @deprecated Use inPeriod — kept for the Node verify script. */
 export function inYtd(row: ClaimRow, asOf: Date, year: number, basis: PeriodBasis): boolean {
-  const d = dateFor(row, basis);
-  if (!d) return false;
-  const { start, end } = ytdWindow(asOf, year);
-  return d >= start && d <= end;
+  return inPeriod(row, { divisions: [], customers: [], basis, asOf, months: defaultMonths(asOf) }, year);
 }
 
 export function applyFilters(rows: ClaimRow[], filters: Filters): ClaimRow[] {
@@ -84,11 +157,10 @@ export function openArBalance(rows: ClaimRow[], asOf: Date): number {
 
 export function periodTotals(
   allRows: ClaimRow[],
-  asOf: Date,
+  filters: Filters,
   year: number,
-  basis: PeriodBasis,
 ): PeriodTotals {
-  const windowRows = allRows.filter((r) => inYtd(r, asOf, year, basis));
+  const windowRows = allRows.filter((r) => inPeriod(r, filters, year));
   const included = windowRows.filter((r) => !r.isExcluded);
 
   const byOutcome = (test: (o: string) => boolean) =>
@@ -104,7 +176,15 @@ export function periodTotals(
   const unclassified = byOutcome((o) => o === UNCLASSIFIED);
 
   const closedUniverse = recovered + writeOffTotal + refuseToPay + actualShortage;
-  const snapshot = new Date(year, asOf.getMonth(), asOf.getDate(), 23, 59, 59, 999);
+  const snapshot = new Date(
+    year,
+    filters.asOf.getMonth(),
+    filters.asOf.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
 
   return {
     deductionsReceived: sum(included),
@@ -188,17 +268,14 @@ export function byOpenBucket(rows: ClaimRow[]): NamedTotal[] {
   );
 }
 
-/** Monthly deduction totals for the given year, indexed Jan..Dec. */
-export function monthlySeries(
-  rows: ClaimRow[],
-  year: number,
-  basis: PeriodBasis,
-): number[] {
+/** Monthly deduction totals for the given year, indexed Jan..Dec. Unselected months are zero. */
+export function monthlySeries(rows: ClaimRow[], year: number, filters: Filters): number[] {
   const months = new Array(12).fill(0);
   for (const row of rows) {
     if (row.isExcluded) continue;
-    const d = dateFor(row, basis);
+    const d = dateFor(row, filters.basis);
     if (!d || d.getFullYear() !== year) continue;
+    if (!filters.months.includes(d.getMonth())) continue;
     months[d.getMonth()] += row.amount;
   }
   return months;
@@ -213,9 +290,8 @@ export interface CustomerComparison {
 
 export function customerComparison(
   rows: ClaimRow[],
-  asOf: Date,
+  filters: Filters,
   currentYear: number,
-  basis: PeriodBasis,
   limit = 8,
 ): CustomerComparison[] {
   const current = new Map<string, number>();
@@ -223,9 +299,9 @@ export function customerComparison(
 
   for (const row of rows) {
     if (row.isExcluded) continue;
-    if (inYtd(row, asOf, currentYear, basis)) {
+    if (inPeriod(row, filters, currentYear)) {
       current.set(row.customerName, (current.get(row.customerName) ?? 0) + row.amount);
-    } else if (inYtd(row, asOf, currentYear - 1, basis)) {
+    } else if (inPeriod(row, filters, currentYear - 1)) {
       previous.set(row.customerName, (previous.get(row.customerName) ?? 0) + row.amount);
     }
   }
@@ -253,16 +329,15 @@ export function distinctValues(rows: ClaimRow[], pick: (r: ClaimRow) => string):
 /** R17 Amazon potential shortage — supplemental card, never part of R02 totals. */
 export function amazonPotentialShortage(
   allRows: ClaimRow[],
-  asOf: Date,
+  filters: Filters,
   year: number,
-  basis: PeriodBasis,
 ): { total: number; count: number } {
   const rows = allRows.filter(
     (r) =>
       r.reasonCode === CODIFICATION.reasonCodes.amazonPotential &&
       r.isAmazon &&
       !r.isExcluded &&
-      inYtd(r, asOf, year, basis),
+      inPeriod(r, filters, year),
   );
   return { total: sum(rows), count: rows.length };
 }

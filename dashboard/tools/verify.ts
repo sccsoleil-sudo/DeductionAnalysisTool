@@ -12,9 +12,11 @@ import { parseWorkbook } from '../src/lib/parseWorkbook';
 import {
   byPenaltyCategory,
   byDivision,
-  inYtd,
+  defaultMonths,
+  inPeriod,
   latestJournalDate,
   periodTotals,
+  type Filters,
 } from '../src/lib/metrics';
 import type { ClaimRow } from '../src/lib/types';
 
@@ -37,12 +39,19 @@ for (const w of parse.warnings) console.log(`  [${w.level}] ${w.message}`);
 
 const asOf = latestJournalDate(parse.rows);
 const currentYear = asOf.getFullYear();
+const filters: Filters = {
+  divisions: [],
+  customers: [],
+  basis: 'journal',
+  asOf,
+  months: defaultMonths(asOf),
+};
 console.log(`\nas-of           : ${asOf.toISOString().slice(0, 10)}`);
 
 function report(label: string, rows: ClaimRow[]) {
   console.log(`\n${'='.repeat(72)}\n${label}  (${rows.length.toLocaleString()} rows)`);
   for (const year of [currentYear - 1, currentYear]) {
-    const t = periodTotals(rows, asOf, year, 'journal');
+    const t = periodTotals(rows, filters, year);
     console.log(`\n  YTD ${year}`);
     console.log(`    Deductions received (excl ${CODIFICATION.excludedRefKey2.join('/')}) ${fmt(t.deductionsReceived)}`);
     console.log(`    Recovered                                        ${fmt(t.recovered)}`);
@@ -58,7 +67,7 @@ function report(label: string, rows: ClaimRow[]) {
     console.log(`    Lines                                            ${String(t.rowCount).padStart(16)}`);
   }
 
-  const cyRows = rows.filter((r) => inYtd(r, asOf, currentYear, 'journal'));
+  const cyRows = rows.filter((r) => inPeriod(r, filters, currentYear));
   console.log('\n  Division split (current YTD):');
   for (const d of byDivision(cyRows)) console.log(`    ${d.name.padEnd(10)} ${fmt(d.value)}`);
 }
@@ -67,7 +76,7 @@ report('R02 SHORTAGE', parse.rows.filter((r) => r.reasonCode === CODIFICATION.re
 report('R16 PENALTIES', parse.rows.filter((r) => r.reasonCode === CODIFICATION.reasonCodes.penalty));
 
 const cyPenalties = parse.rows.filter(
-  (r) => r.reasonCode === CODIFICATION.reasonCodes.penalty && inYtd(r, asOf, currentYear, 'journal'),
+  (r) => r.reasonCode === CODIFICATION.reasonCodes.penalty && inPeriod(r, filters, currentYear),
 );
 console.log('\n  Penalty categories (closed only, current YTD):');
 for (const c of byPenaltyCategory(cyPenalties)) {

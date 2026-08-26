@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CODIFICATION } from './config/codification';
 import { clearBaseline, diffAgainstBaseline, loadBaseline, saveBaseline } from './lib/baseline';
 import { count, longDate } from './lib/format';
-import { applyFilters, distinctValues, latestJournalDate, type Filters } from './lib/metrics';
+import { applyFilters, defaultMonths, distinctValues, latestJournalDate, periodRangeLabel, type Filters } from './lib/metrics';
 import {
   clearSession,
   loadSession,
@@ -108,7 +108,13 @@ export default function App() {
       }
 
       const asOf = latestJournalDate(result.rows);
-      const nextFilters: Filters = { divisions: [], customers: [], basis: 'journal', asOf };
+      const nextFilters: Filters = {
+        divisions: [],
+        customers: [],
+        basis: 'journal',
+        asOf,
+        months: defaultMonths(asOf),
+      };
       setParse(result);
       setFilters(nextFilters);
       setTab('shortage');
@@ -289,7 +295,7 @@ export default function App() {
               {tab === 'quality' && <DataQualityTab parse={parse} rows={rows} />}
 
               <p className="muted" style={{ marginTop: 22, fontSize: '0.78rem' }}>
-                Comparison window: Jan 1 → {longDate(filters.asOf)} in each year, on{' '}
+                Comparison window: {periodRangeLabel(filters)}, cut off at {longDate(filters.asOf)} on{' '}
                 {filters.basis === 'journal' ? 'Journal Entry Date' : 'Clearing Date'}. All processing
                 happens in this browser; your uploaded data is saved locally and survives refresh.
               </p>

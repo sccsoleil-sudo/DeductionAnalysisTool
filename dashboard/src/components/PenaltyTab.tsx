@@ -5,10 +5,12 @@ import {
   byDivision,
   byPenaltyCategory,
   customerComparison,
-  inYtd,
+  inPeriod,
   monthlySeries,
+  periodRangeLabel,
   periodTotals,
   sum,
+  yearPeriodLabel,
   type Filters,
 } from '../lib/metrics';
 import type { ClaimRow } from '../lib/types';
@@ -26,22 +28,23 @@ interface PenaltyTabProps {
 }
 
 export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
-  const { asOf, basis } = filters;
+  const { asOf } = filters;
   const currentYear = asOf.getFullYear();
   const lastYear = currentYear - 1;
-  const cyLabel = `${currentYear} YTD`;
-  const lyLabel = `${lastYear} YTD`;
+  const cyLabel = yearPeriodLabel(currentYear, filters);
+  const lyLabel = yearPeriodLabel(lastYear, filters);
+  const rangeLabel = periodRangeLabel(filters);
 
-  const cy = useMemo(() => periodTotals(rows, asOf, currentYear, basis), [rows, asOf, currentYear, basis]);
-  const ly = useMemo(() => periodTotals(rows, asOf, lastYear, basis), [rows, asOf, lastYear, basis]);
+  const cy = useMemo(() => periodTotals(rows, filters, currentYear), [rows, filters, currentYear]);
+  const ly = useMemo(() => periodTotals(rows, filters, lastYear), [rows, filters, lastYear]);
 
   const cyRows = useMemo(
-    () => rows.filter((r) => inYtd(r, asOf, currentYear, basis)),
-    [rows, asOf, currentYear, basis],
+    () => rows.filter((r) => inPeriod(r, filters, currentYear)),
+    [rows, filters, currentYear],
   );
   const lyRows = useMemo(
-    () => rows.filter((r) => inYtd(r, asOf, lastYear, basis)),
-    [rows, asOf, lastYear, basis],
+    () => rows.filter((r) => inPeriod(r, filters, lastYear)),
+    [rows, filters, lastYear],
   );
 
   const catCy = useMemo(() => byPenaltyCategory(cyRows), [cyRows]);
@@ -89,8 +92,8 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
     );
   }, [divisionCy, divisionLy, lyLabel, cyLabel]);
 
-  const monthlyLy = useMemo(() => monthlySeries(rows, lastYear, basis), [rows, lastYear, basis]);
-  const monthlyCy = useMemo(() => monthlySeries(rows, currentYear, basis), [rows, currentYear, basis]);
+  const monthlyLy = useMemo(() => monthlySeries(rows, lastYear, filters), [rows, lastYear, filters]);
+  const monthlyCy = useMemo(() => monthlySeries(rows, currentYear, filters), [rows, currentYear, filters]);
 
   const monthlyChart = useMemo(
     () => monthlyConfig(monthlyLy, monthlyCy, String(lastYear), String(currentYear)),
@@ -98,8 +101,8 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
   );
 
   const topCustomers = useMemo(
-    () => customerComparison(rows, asOf, currentYear, basis, 10),
-    [rows, asOf, currentYear, basis],
+    () => customerComparison(rows, filters, currentYear, 10),
+    [rows, filters, currentYear],
   );
 
   const largestCategory = catCy[0];
@@ -131,7 +134,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
     <>
       <SectionCard
         title="Key metrics"
-        subtitle={`${lyLabel} vs ${cyLabel}, cut off at ${longDate(asOf)}`}
+        subtitle={`${lyLabel} vs ${cyLabel} · ${rangeLabel}, cut off at ${longDate(asOf)}`}
         csv={kpiCsv}
       >
         <div className="grid grid-4 kpi-grid">
@@ -196,7 +199,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
       <div className="grid grid-2">
         <SectionCard
           title={`Penalty category — ${lyLabel} vs ${cyLabel}`}
-          subtitle={`Closed rows only, in fixed business-priority order. Cut off at ${longDate(asOf)}.`}
+          subtitle={`Closed rows only · ${rangeLabel}, cut off at ${longDate(asOf)}.`}
           csv={{
             filename: 'penalty-category-comparison',
             headers: ['Category', lyLabel, cyLabel],
@@ -248,7 +251,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
 
         <SectionCard
           title="Monthly penalty trend"
-          subtitle="Full calendar year, both periods."
+          subtitle={`Selected months only (${rangeLabel}).`}
           csv={{
             filename: 'penalty-monthly-trend',
             headers: ['Month', String(lastYear), String(currentYear)],
