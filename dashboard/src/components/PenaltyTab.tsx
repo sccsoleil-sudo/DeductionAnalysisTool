@@ -18,7 +18,8 @@ import { Chart, PALETTE, comparisonConfig, doughnutConfig, monthlyConfig } from 
 import { KpiCard } from './KpiCard';
 import { CustomerTable } from './CustomerTable';
 import { SectionCard } from './SectionCard';
-import type { CsvExport } from './DownloadCsvButton';
+import { buildExportFilename } from '../lib/exportSpreadsheet';
+import type { SectionExport } from './DownloadExcelButton';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -34,6 +35,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
   const cyLabel = yearPeriodLabel(currentYear, filters);
   const lyLabel = yearPeriodLabel(lastYear, filters);
   const rangeLabel = periodRangeLabel(filters);
+  const xlsxName = (section: string) => buildExportFilename(section, filters);
 
   const cy = useMemo(() => periodTotals(rows, filters, currentYear), [rows, filters, currentYear]);
   const ly = useMemo(() => periodTotals(rows, filters, lastYear), [rows, filters, lastYear]);
@@ -111,8 +113,8 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
     (l) => catCy.some((c) => c.name === l) || catLy.some((c) => c.name === l),
   );
 
-  const kpiCsv: CsvExport = {
-    filename: 'penalty-key-metrics',
+  const kpiExport: SectionExport = {
+    filename: xlsxName('penalty-key-metrics'),
     headers: ['Metric', lyLabel, cyLabel],
     rows: [
       { Metric: 'Penalties charged', [lyLabel]: ly.deductionsReceived, [cyLabel]: cy.deductionsReceived },
@@ -135,7 +137,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
       <SectionCard
         title="Key metrics"
         subtitle={`${lyLabel} vs ${cyLabel} · ${rangeLabel}, cut off at ${longDate(asOf)}`}
-        csv={kpiCsv}
+        sectionExport={kpiExport}
       >
         <div className="grid grid-4 kpi-grid">
           <KpiCard
@@ -183,8 +185,8 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
         <SectionCard
           title="Excluded offset rows"
           subtitle="Held out of every penalty figure above"
-          csv={{
-            filename: 'penalty-excluded-offsets',
+          sectionExport={{
+            filename: xlsxName('penalty-excluded-offsets'),
             headers: ['Description', 'Amount'],
             rows: [{ Description: `Excluded (${CODIFICATION.excludedRefKey2.join(', ')})`, Amount: cy.excluded }],
           }}
@@ -200,8 +202,8 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
         <SectionCard
           title={`Penalty category — ${lyLabel} vs ${cyLabel}`}
           subtitle={`Closed rows only · ${rangeLabel}, cut off at ${longDate(asOf)}.`}
-          csv={{
-            filename: 'penalty-category-comparison',
+          sectionExport={{
+            filename: xlsxName('penalty-category-comparison'),
             headers: ['Category', lyLabel, cyLabel],
             rows: categoryLabels.map((label) => ({
               Category: label,
@@ -216,8 +218,8 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
         <SectionCard
           title={`Root cause mix — ${cyLabel}`}
           subtitle="Share of confirmed penalty value by category."
-          csv={{
-            filename: 'penalty-root-cause-mix',
+          sectionExport={{
+            filename: xlsxName('penalty-root-cause-mix'),
             headers: ['Category', 'Amount', 'Lines', 'Share (%)'],
             rows: catCy.map((c) => ({
               Category: c.name,
@@ -236,8 +238,8 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
         <SectionCard
           title="Division breakdown"
           subtitle="Includes open rows, so it reconciles to penalties charged."
-          csv={{
-            filename: 'penalty-division-breakdown',
+          sectionExport={{
+            filename: xlsxName('penalty-division-breakdown'),
             headers: ['Division', lyLabel, cyLabel],
             rows: divisionCy.map((d) => ({
               Division: d.name,
@@ -252,8 +254,8 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
         <SectionCard
           title="Monthly penalty trend"
           subtitle={`Selected months only (${rangeLabel}).`}
-          csv={{
-            filename: 'penalty-monthly-trend',
+          sectionExport={{
+            filename: xlsxName('penalty-monthly-trend'),
             headers: ['Month', String(lastYear), String(currentYear)],
             rows: MONTHS.map((month, i) => ({
               Month: month,
@@ -270,8 +272,8 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
         <SectionCard
           title={`Customers — ${lyLabel} vs ${cyLabel}`}
           subtitle="Ranked by current-period penalty value."
-          csv={{
-            filename: 'penalty-customer-comparison',
+          sectionExport={{
+            filename: xlsxName('penalty-customer-comparison'),
             headers: ['Customer', lyLabel, cyLabel, 'Change'],
             rows: topCustomers.map((c) => ({
               Customer: c.name,
@@ -287,8 +289,8 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
         <SectionCard
           title={`Category detail — ${cyLabel}`}
           subtitle="Confirmed penalties by root cause."
-          csv={{
-            filename: 'penalty-category-detail',
+          sectionExport={{
+            filename: xlsxName('penalty-category-detail'),
             headers: ['Category', 'Lines', lyLabel, cyLabel, 'Share (%)'],
             rows: catCy.map((cat) => {
               const previous = catLy.find((c) => c.name === cat.name)?.value ?? 0;

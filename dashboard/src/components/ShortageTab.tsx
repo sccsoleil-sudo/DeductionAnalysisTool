@@ -29,7 +29,8 @@ import {
 import { KpiCard } from './KpiCard';
 import { CustomerTable } from './CustomerTable';
 import { SectionCard } from './SectionCard';
-import type { CsvExport } from './DownloadCsvButton';
+import { buildExportFilename } from '../lib/exportSpreadsheet';
+import type { SectionExport } from './DownloadExcelButton';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -46,6 +47,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
   const cyLabel = yearPeriodLabel(currentYear, filters);
   const lyLabel = yearPeriodLabel(lastYear, filters);
   const rangeLabel = periodRangeLabel(filters);
+  const xlsxName = (section: string) => buildExportFilename(section, filters);
 
   const cy = useMemo(
     () => periodTotals(rows, filters, currentYear),
@@ -173,8 +175,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     [topOpen],
   );
 
-  const kpiCsv: CsvExport = {
-    filename: 'shortage-key-metrics',
+  const kpiExport: SectionExport = {
+    filename: xlsxName('shortage-key-metrics'),
     headers: ['Metric', lyLabel, cyLabel],
     rows: [
       { Metric: 'Open AR balance', [lyLabel]: ly.openArBalance, [cyLabel]: cy.openArBalance },
@@ -186,8 +188,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     ],
   };
 
-  const supplementalCsv: CsvExport = {
-    filename: 'shortage-supplemental',
+  const supplementalExport: SectionExport = {
+    filename: xlsxName('shortage-supplemental'),
     headers: ['Item', 'Amount', 'Lines'],
     rows: [
       ...(cy.excluded !== 0
@@ -208,7 +210,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
       <SectionCard
         title="Key metrics"
         subtitle={`${lyLabel} vs ${cyLabel} · ${rangeLabel}, cut off at ${longDate(asOf)}`}
-        csv={kpiCsv}
+        sectionExport={kpiExport}
       >
         <div className="grid grid-4 kpi-grid">
           <KpiCard
@@ -251,7 +253,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         <SectionCard
           title="Supplemental items"
           subtitle="Held out of headline KPI totals"
-          csv={supplementalCsv}
+          sectionExport={supplementalExport}
           className="card"
         >
           <div className="note info" style={{ marginBottom: 0 }}>
@@ -276,8 +278,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         <SectionCard
           title={`Year-on-year comparison — ${lyLabel} vs ${cyLabel}`}
           subtitle={`Same months in both years (${rangeLabel}), cut off at ${longDate(asOf)}.`}
-          csv={{
-            filename: 'shortage-yoy-comparison',
+          sectionExport={{
+            filename: xlsxName('shortage-yoy-comparison'),
             headers: ['Metric', lyLabel, cyLabel],
             rows: [
               { Metric: 'Open AR balance', [lyLabel]: ly.openArBalance, [cyLabel]: cy.openArBalance },
@@ -293,8 +295,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         <SectionCard
           title="P&L impact composition"
           subtitle="Write-off is the P&L hit. The COM portion is stacked separately."
-          csv={{
-            filename: 'shortage-pl-composition',
+          sectionExport={{
+            filename: xlsxName('shortage-pl-composition'),
             headers: ['Component', lyLabel, cyLabel],
             rows: [
               { Component: 'Write-off (WO)', [lyLabel]: ly.plainWriteOff, [cyLabel]: cy.plainWriteOff },
@@ -316,8 +318,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         <SectionCard
           title="Division breakdown"
           subtitle="Business Area mapped through the codification table."
-          csv={{
-            filename: 'shortage-division-breakdown',
+          sectionExport={{
+            filename: xlsxName('shortage-division-breakdown'),
             headers: ['Division', lyLabel, cyLabel],
             rows: divisionCy.map((d) => ({
               Division: d.name,
@@ -332,8 +334,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         <SectionCard
           title="Monthly deduction trend"
           subtitle={`Selected months only (${rangeLabel}).`}
-          csv={{
-            filename: 'shortage-monthly-trend',
+          sectionExport={{
+            filename: xlsxName('shortage-monthly-trend'),
             headers: ['Month', String(lastYear), String(currentYear)],
             rows: MONTHS.map((month, i) => ({
               Month: month,
@@ -350,8 +352,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         <SectionCard
           title={`Outcome split — ${cyLabel}`}
           subtitle="Closed items classified by Reference Key 2."
-          csv={{
-            filename: 'shortage-outcome-split',
+          sectionExport={{
+            filename: xlsxName('shortage-outcome-split'),
             headers: ['Outcome', 'Amount', 'Lines'],
             rows: outcomes.map((o) => ({ Outcome: o.name, Amount: o.value, Lines: o.count })),
           }}
@@ -362,8 +364,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         <SectionCard
           title="Open item buckets"
           subtitle="Potential lost vs recoverable vs pending analysis."
-          csv={{
-            filename: 'shortage-open-buckets',
+          sectionExport={{
+            filename: xlsxName('shortage-open-buckets'),
             headers: ['Bucket', 'Amount', 'Lines'],
             rows: openBuckets.map((o) => ({ Bucket: o.name, Amount: o.value, Lines: o.count })),
           }}
@@ -374,8 +376,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         <SectionCard
           title="Open items by dispute status"
           subtitle="SAP status mapped to management labels."
-          csv={{
-            filename: 'shortage-dispute-status',
+          sectionExport={{
+            filename: xlsxName('shortage-dispute-status'),
             headers: ['Status', 'Amount', 'Lines'],
             rows: disputeStatuses.map((d) => ({ Status: d.name, Amount: d.value, Lines: d.count })),
           }}
@@ -388,8 +390,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         <SectionCard
           title={`Customers — ${lyLabel} vs ${cyLabel}`}
           subtitle="Ranked by current-period deduction value."
-          csv={{
-            filename: 'shortage-customer-comparison',
+          sectionExport={{
+            filename: xlsxName('shortage-customer-comparison'),
             headers: ['Customer', lyLabel, cyLabel, 'Change'],
             rows: topCustomers.map((c) => ({
               Customer: c.name,
@@ -405,8 +407,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         <SectionCard
           title="Top 5 customers by open exposure"
           subtitle="Uncleared R02 lines in the current period."
-          csv={{
-            filename: 'shortage-top-open-customers',
+          sectionExport={{
+            filename: xlsxName('shortage-top-open-customers'),
             headers: ['Customer', 'Open amount', 'Lines'],
             rows: topOpen.map((c) => ({ Customer: c.name, 'Open amount': c.value, Lines: c.count })),
           }}

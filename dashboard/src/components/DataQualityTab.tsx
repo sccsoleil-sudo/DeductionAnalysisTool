@@ -2,12 +2,15 @@ import { useMemo } from 'react';
 import { CODIFICATION, UNCLASSIFIED } from '../config/codification';
 import { classify } from '../lib/classify';
 import { count, isoDate, money } from '../lib/format';
+import { buildExportFilename } from '../lib/exportSpreadsheet';
+import type { Filters } from '../lib/metrics';
 import type { ClaimRow, ParseResult } from '../lib/types';
 import { SectionCard } from './SectionCard';
 
 interface DataQualityTabProps {
   parse: ParseResult;
   rows: ClaimRow[];
+  filters: Filters;
 }
 
 interface CodeStat {
@@ -19,7 +22,10 @@ interface CodeStat {
   recognized: boolean;
 }
 
-export function DataQualityTab({ parse, rows }: DataQualityTabProps) {
+export function DataQualityTab({ parse, rows, filters }: DataQualityTabProps) {
+  const xlsxName = (section: string) =>
+    buildExportFilename(section, filters, { sourceFile: parse.fileName });
+
   const codeStats = useMemo<CodeStat[]>(() => {
     const map = new Map<string, CodeStat>();
     for (const row of rows) {
@@ -67,8 +73,8 @@ export function DataQualityTab({ parse, rows }: DataQualityTabProps) {
         <SectionCard
           title="Parse warnings"
           subtitle="Messages from the latest workbook upload"
-          csv={{
-            filename: 'data-quality-warnings',
+          sectionExport={{
+            filename: xlsxName('data-quality-warnings'),
             headers: ['Level', 'Message'],
             rows: parse.warnings.map((w) => ({ Level: w.level, Message: w.message })),
           }}
@@ -85,8 +91,8 @@ export function DataQualityTab({ parse, rows }: DataQualityTabProps) {
         <SectionCard
           title="File"
           subtitle={parse.fileName}
-          csv={{
-            filename: 'data-quality-file',
+          sectionExport={{
+            filename: xlsxName('data-quality-file'),
             headers: ['Field', 'Value'],
             rows: [
               { Field: 'File name', Value: parse.fileName },
@@ -132,8 +138,8 @@ export function DataQualityTab({ parse, rows }: DataQualityTabProps) {
         <SectionCard
           title="Issues to review"
           subtitle="Rows that will read oddly on the dashboard."
-          csv={{
-            filename: 'data-quality-issues',
+          sectionExport={{
+            filename: xlsxName('data-quality-issues'),
             headers: ['Issue', 'Count'],
             rows: [
               { Issue: 'Unclassified Reference Key 2', Count: unclassified.length },
@@ -181,8 +187,8 @@ export function DataQualityTab({ parse, rows }: DataQualityTabProps) {
         <SectionCard
           title="Active codification"
           subtitle="Edit src/config/codification.ts to change any of these."
-          csv={{
-            filename: 'data-quality-codification',
+          sectionExport={{
+            filename: xlsxName('data-quality-codification'),
             headers: ['Rule', 'Value'],
             rows: [
               { Rule: 'Excluded codes', Value: CODIFICATION.excludedRefKey2.join(', ') },
@@ -228,8 +234,8 @@ export function DataQualityTab({ parse, rows }: DataQualityTabProps) {
       <SectionCard
         title="Every Reference Key 2 in the file"
         subtitle="Unrecognized codes are listed first — correct these in SAP or add to the codification config."
-        csv={{
-          filename: 'data-quality-reference-key-2',
+        sectionExport={{
+          filename: xlsxName('data-quality-reference-key-2'),
           headers: ['Reason Code', 'Reference Key 2', 'Classified as (when closed)', 'Lines', 'Amount'],
           rows: codeStats.map((stat) => ({
             'Reason Code': stat.reasonCode,

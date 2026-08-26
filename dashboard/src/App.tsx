@@ -292,7 +292,7 @@ export default function App() {
                 <ShortageTab rows={shortageRows} allRows={filtered} filters={filters} />
               )}
               {tab === 'penalty' && <PenaltyTab rows={penaltyRows} filters={filters} />}
-              {tab === 'quality' && <DataQualityTab parse={parse} rows={rows} />}
+              {tab === 'quality' && <DataQualityTab parse={parse} rows={rows} filters={filters} />}
 
               <p className="muted" style={{ marginTop: 22, fontSize: '0.78rem' }}>
                 Comparison window: {periodRangeLabel(filters)}, cut off at {longDate(filters.asOf)} on{' '}
