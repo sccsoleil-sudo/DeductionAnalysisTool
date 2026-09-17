@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CODIFICATION, excludedCodesLabel, PENALTY_CATEGORY_ORDER } from '../config/codification';
+import { excludedCodesLabel, PENALTY_CATEGORY_ORDER } from '../config/codification';
 import { compactMoney, count, longDate, money } from '../lib/format';
 import {
   byDivision,
