@@ -2,6 +2,7 @@ import type { ClaimRow, ParseResult } from './types';
 import type { Filters } from './metrics';
 import { defaultMonths } from './metrics';
 import { migratePivotFieldNames, type CustomPivotBlock } from './customBlocks';
+import { classify, isExcludedCode } from './classify';
 
 const DB_NAME = 'lmd-dashboard';
 const DB_VERSION = 1;
@@ -96,6 +97,10 @@ function toStoredRow(row: ClaimRow): StoredRow {
 }
 
 function fromStoredRow(row: StoredRow): ClaimRow {
+  const reasonCode = row[11];
+  const refKey2 = row[12];
+  const isOpen = row[19] === 1;
+  const isExcluded = isExcludedCode(refKey2);
   return {
     key: row[0],
     sheet: row[1],
@@ -108,18 +113,18 @@ function fromStoredRow(row: StoredRow): ClaimRow {
     itemText: row[8],
     disputeReason: row[9],
     disputeStatus: row[10],
-    reasonCode: row[11],
-    refKey2: row[12],
+    reasonCode,
+    refKey2,
     businessArea: row[13],
     division: row[14],
     amount: row[15],
     journalEntryDate: row[16] ? new Date(row[16]) : null,
     clearingDate: row[17] ? new Date(row[17]) : null,
     clearingJournalEntry: row[18],
-    isOpen: row[19] === 1,
-    isExcluded: row[20] === 1,
+    isOpen,
+    isExcluded,
     isAmazon: row[21] === 1,
-    outcome: row[22],
+    outcome: classify(reasonCode, refKey2, isOpen),
   };
 }
 

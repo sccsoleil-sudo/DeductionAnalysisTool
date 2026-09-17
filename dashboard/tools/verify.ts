@@ -7,7 +7,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
-import { CODIFICATION } from '../src/config/codification';
+import { CODIFICATION, excludedCodesLabel } from '../src/config/codification';
 import { parseWorkbook } from '../src/lib/parseWorkbook';
 import {
   byPenaltyCategory,
@@ -54,9 +54,9 @@ function report(label: string, rows: ClaimRow[]) {
   for (const year of [currentYear - 1, currentYear]) {
     const t = periodTotals(rows, filters, year);
     console.log(`\n  YTD ${year}`);
-    console.log(`    Deductions received (excl ${CODIFICATION.excludedRefKey2.join('/')}) ${fmt(t.deductionsReceived)}`);
+    console.log(`    Deductions received (excl ${excludedCodesLabel()}) ${fmt(t.deductionsReceived)}`);
     console.log(`    Recovered                                        ${fmt(t.recovered)}`);
-    console.log(`    Write-off total (WO + COM WO + COM w/ Clearing Date) ${fmt(t.writeOffTotal)}`);
+    console.log(`    Lost total (WO + COM WO + COM w/ Clearing Date)  ${fmt(t.writeOffTotal)}`);
     console.log(`       of which COM write-off                        ${fmt(t.comWriteOff)}`);
     console.log(`       of which COM with Clearing Date               ${fmt(t.refuseToPay)}`);
     console.log(`    Actual shortage                                  ${fmt(t.actualShortage)}`);

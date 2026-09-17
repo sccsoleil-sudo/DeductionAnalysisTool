@@ -57,7 +57,7 @@ export interface PeriodTotals {
   comWriteOff: number;
   /** Cleared codes containing WO but not COM-prefixed. */
   plainWriteOff: number;
-  /** COM* without WO that has a Clearing Date — included in writeOffTotal. */
+  /** COM* without WO that has a Clearing Date — included in Lost (writeOffTotal). */
   refuseToPay: number;
   actualShortage: number;
   openInPeriod: number;

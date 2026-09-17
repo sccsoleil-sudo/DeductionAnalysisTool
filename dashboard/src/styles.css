@@ -268,6 +268,10 @@ button {
   margin-bottom: 16px;
 }
 
+.grid-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .grid-4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -281,6 +285,7 @@ button {
 }
 
 @media (max-width: 1200px) {
+  .grid-5,
   .grid-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -290,6 +295,7 @@ button {
 }
 
 @media (max-width: 780px) {
+  .grid-5,
   .grid-4,
   .grid-3,
   .grid-2 {
@@ -341,6 +347,8 @@ button {
 .kpi-foot {
   font-size: 0.76rem;
   color: var(--clr-muted);
+  white-space: pre-line;
+  line-height: 1.35;
 }
 
 .kpi-delta {

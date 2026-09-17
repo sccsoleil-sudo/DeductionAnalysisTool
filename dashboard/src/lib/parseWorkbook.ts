@@ -200,7 +200,7 @@ export async function parseWorkbook(file: File): Promise<ParseResult> {
   if (unparseableDates > 0) {
     warnings.push({
       level: 'warning',
-      message: `${unparseableDates.toLocaleString()} row(s) have an unreadable Journal Entry Date and are excluded from period views.`,
+      message: `${unparseableDates.toLocaleString()} row(s) have an unreadable Claim Date (Journal Entry Date) and are excluded from period views.`,
     });
   }
   if (unknownReasonCodes > 0) {

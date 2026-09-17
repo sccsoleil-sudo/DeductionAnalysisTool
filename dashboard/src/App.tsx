@@ -348,11 +348,11 @@ export default function App() {
               <div className="dashboard-footer">
                 <p className="muted dashboard-footer-left">
                   Comparison window: {periodRangeLabel(filters)}, cut off at {longDate(filters.asOf)}.
-                  Deductions &amp; recovery on {filters.basis === 'journal' ? 'Journal Entry Date' : 'Clearing Date'}
+                  Deductions &amp; recovery on {filters.basis === 'journal' ? 'Claim Date' : 'Clearing Date'}
                   {filters.plBasis !== filters.basis && (
                     <>
-                      ; Write-off on{' '}
-                      {filters.plBasis === 'journal' ? 'Journal Entry Date' : 'Clearing Date'}
+                      ; Lost on{' '}
+                      {filters.plBasis === 'journal' ? 'Claim Date' : 'Clearing Date'}
                     </>
                   )}
                   .

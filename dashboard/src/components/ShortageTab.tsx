@@ -1,13 +1,16 @@
 import { useMemo } from 'react';
-import { CODIFICATION } from '../config/codification';
+import { CODIFICATION, excludedCodesLabel } from '../config/codification';
 import { compactMoney, longDate, money, percent, count } from '../lib/format';
 import {
+  openArBreakdown,
   amazonPotentialShortage,
   byCustomer,
   byDisputeStatus,
   byDivision,
   byOpenBucket,
   byOutcome,
+  claimedInPreviousYear,
+  lostClaimedInPreviousYear,
   customerComparison,
   inPeriod,
   monthlySeries,
@@ -66,6 +69,26 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     () => periodTotals(rows, filters, lastYear, filters.plBasis),
     [rows, filters, lastYear],
   );
+  const priorYearClaimed = useMemo(
+    () => claimedInPreviousYear(rows, filters, currentYear),
+    [rows, filters, currentYear],
+  );
+  const lostPriorYearClaimed = useMemo(
+    () => lostClaimedInPreviousYear(rows, filters, currentYear),
+    [rows, filters, currentYear],
+  );
+  const openArByClaimYear = useMemo(() => {
+    const snapshot = new Date(
+      currentYear,
+      asOf.getMonth(),
+      asOf.getDate(),
+      23,
+      59,
+      59,
+      999,
+    );
+    return openArBreakdown(rows, snapshot);
+  }, [rows, currentYear, asOf]);
 
   const cyRows = useMemo(
     () => rows.filter((r) => inPeriod(r, filters, currentYear)),
@@ -101,9 +124,9 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
   const headlineConfig = useMemo(
     () =>
       comparisonConfig(
-        ['Open AR balance', 'Deductions received', 'Recovered', 'Write-off'],
-        [ly.openArBalance, ly.deductionsReceived, ly.recovered, lyPl.writeOffTotal],
-        [cy.openArBalance, cy.deductionsReceived, cy.recovered, cyPl.writeOffTotal],
+        ['Open AR balance', 'Deductions received', 'Recovered', 'Lost', 'Actual shortage'],
+        [ly.openArBalance, ly.deductionsReceived, ly.recovered, lyPl.writeOffTotal, ly.actualShortage],
+        [cy.openArBalance, cy.deductionsReceived, cy.recovered, cyPl.writeOffTotal, cy.actualShortage],
         lyLabel,
         cyLabel,
       ),
@@ -189,9 +212,29 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     headers: ['Metric', lyLabel, cyLabel],
     rows: [
       { Metric: 'Open AR balance', [lyLabel]: ly.openArBalance, [cyLabel]: cy.openArBalance },
+      {
+        Metric: `Open AR claimed this year (${currentYear})`,
+        [lyLabel]: '',
+        [cyLabel]: openArByClaimYear.claimedThisYear,
+      },
+      {
+        Metric: `Open AR claimed previous year (${lastYear})`,
+        [lyLabel]: '',
+        [cyLabel]: openArByClaimYear.claimedPreviousYear,
+      },
+      ...(openArByClaimYear.claimedEarlier !== 0
+        ? [
+            {
+              Metric: `Open AR claimed before ${lastYear}`,
+              [lyLabel]: '',
+              [cyLabel]: openArByClaimYear.claimedEarlier,
+            },
+          ]
+        : []),
       { Metric: 'Deductions received', [lyLabel]: ly.deductionsReceived, [cyLabel]: cy.deductionsReceived },
       { Metric: 'Recovered', [lyLabel]: ly.recovered, [cyLabel]: cy.recovered },
-      { Metric: 'Write-off', [lyLabel]: lyPl.writeOffTotal, [cyLabel]: cyPl.writeOffTotal },
+      { Metric: 'Lost', [lyLabel]: lyPl.writeOffTotal, [cyLabel]: cyPl.writeOffTotal },
+      { Metric: 'Identified actual shortage (SHO)', [lyLabel]: ly.actualShortage, [cyLabel]: cy.actualShortage },
       { Metric: 'COM write-off portion', [lyLabel]: lyPl.comWriteOff, [cyLabel]: cyPl.comWriteOff },
       { Metric: 'COM with Clearing Date', [lyLabel]: lyPl.refuseToPay, [cyLabel]: cyPl.refuseToPay },
       { Metric: 'Recovery rate (%)', [lyLabel]: ly.recoveryRate, [cyLabel]: cy.recoveryRate },
@@ -203,7 +246,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     headers: ['Item', 'Amount', 'Lines'],
     rows: [
       ...(cy.excluded !== 0
-        ? [{ Item: 'Excluded offsets (PMT/XXX/XXXX)', Amount: cy.excluded, Lines: '' }]
+        ? [{ Item: `Excluded offsets (${excludedCodesLabel()})`, Amount: cy.excluded, Lines: '' }]
         : []),
       ...(amazon.count > 0
         ? [{ Item: 'Amazon R17 potential shortage', Amount: amazon.total, Lines: amazon.count }]
@@ -222,14 +265,21 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         subtitle={`${lyLabel} vs ${cyLabel} · ${rangeLabel}, cut off at ${longDate(asOf)}`}
         sectionExport={kpiExport}
       >
-        <div className="grid grid-4 kpi-grid">
+        <div className="grid grid-5 kpi-grid">
           <KpiCard
             label="Open AR balance"
             value={compactMoney(cy.openArBalance)}
             tone="info"
             current={cy.openArBalance}
             previous={ly.openArBalance}
-            footnote={`Uncleared as of ${longDate(asOf)}`}
+            footnote={[
+              `Uncleared as of ${longDate(asOf)}`,
+              `Open claimed this year (${currentYear}): ${money(openArByClaimYear.claimedThisYear)}`,
+              `+ Open claimed previous year (${lastYear}): ${money(openArByClaimYear.claimedPreviousYear)}`,
+              ...(openArByClaimYear.claimedEarlier !== 0
+                ? [`+ Open claimed before ${lastYear}: ${money(openArByClaimYear.claimedEarlier)}`]
+                : []),
+            ].join('\n')}
           />
           <KpiCard
             label="Deductions received"
@@ -237,7 +287,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
             tone="primary"
             current={cy.deductionsReceived}
             previous={ly.deductionsReceived}
-            footnote={`${count(cy.rowCount)} lines · excludes ${CODIFICATION.excludedRefKey2.join(', ')}`}
+            footnote={`${count(cy.rowCount)} lines · excludes ${excludedCodesLabel()}`}
           />
           <KpiCard
             label="Recovered"
@@ -249,14 +299,35 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
             footnote={`Recovery rate ${percent(cy.recoveryRate)} (LY ${percent(ly.recoveryRate)})`}
           />
           <KpiCard
-            label="Write-off"
+            label="Lost"
             value={compactMoney(cyPl.writeOffTotal)}
             tone="danger"
             current={cyPl.writeOffTotal}
             previous={lyPl.writeOffTotal}
-            footnote={`${basisLabel(filters.plBasis)} · COM with Clearing Date ${money(cyPl.refuseToPay + cyPl.comWriteOff)}`}
+            footnote={[
+              `${basisLabel(filters.plBasis)} · COM with Clearing Date ${money(cyPl.refuseToPay + cyPl.comWriteOff)}`,
+              ...(filters.plBasis === 'clearing'
+                ? [
+                    `+ ${money(lostPriorYearClaimed)} claimed in previous year (${lastYear}, Claim Date)`,
+                  ]
+                : []),
+            ].join('\n')}
+          />
+          <KpiCard
+            label="Identified actual shortage"
+            value={compactMoney(cy.actualShortage)}
+            tone="warn"
+            current={cy.actualShortage}
+            previous={ly.actualShortage}
+            footnote={`${basisLabel(filters.basis)} · Ref Key 2 = ${CODIFICATION.actualShortageCode}`}
           />
         </div>
+        {filters.basis === 'clearing' && priorYearClaimed > 0 && (
+          <div className="note info" style={{ marginTop: 12, marginBottom: 0 }}>
+            {money(priorYearClaimed)} amount claimed in the previous year ({lastYear}, Claim Date)
+            — included here because Period basis is Clearing Date.
+          </div>
+        )}
       </SectionCard>
 
       {(cy.excluded !== 0 || amazon.count > 0) && (
@@ -270,7 +341,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
             {cy.excluded !== 0 && (
               <>
                 <strong>Identified payback / offsets (excluded):</strong> {money(cy.excluded)} across{' '}
-                {CODIFICATION.excludedRefKey2.join(', ')} lines — held out of every KPI above.
+                {excludedCodesLabel()} lines — held out of every KPI above.
               </>
             )}
             {cy.excluded !== 0 && amazon.count > 0 && <br />}
@@ -295,7 +366,12 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
               { Metric: 'Open AR balance', [lyLabel]: ly.openArBalance, [cyLabel]: cy.openArBalance },
               { Metric: 'Deductions received', [lyLabel]: ly.deductionsReceived, [cyLabel]: cy.deductionsReceived },
               { Metric: 'Recovered', [lyLabel]: ly.recovered, [cyLabel]: cy.recovered },
-              { Metric: 'Write-off', [lyLabel]: lyPl.writeOffTotal, [cyLabel]: cyPl.writeOffTotal },
+              { Metric: 'Lost', [lyLabel]: lyPl.writeOffTotal, [cyLabel]: cyPl.writeOffTotal },
+              {
+                Metric: 'Identified actual shortage (SHO)',
+                [lyLabel]: ly.actualShortage,
+                [cyLabel]: cy.actualShortage,
+              },
             ],
           }}
         >
@@ -303,10 +379,10 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         </SectionCard>
 
         <SectionCard
-          title="Write-off composition"
+          title="Lost composition"
           subtitle={`WO + COM WO + COM with Clearing Date · on ${basisLabel(filters.plBasis)}.`}
           sectionExport={{
-            filename: xlsxName('shortage-writeoff-composition'),
+            filename: xlsxName('shortage-lost-composition'),
             headers: ['Component', lyLabel, cyLabel],
             rows: [
               { Component: 'Write-off (WO)', [lyLabel]: lyPl.plainWriteOff, [cyLabel]: cyPl.plainWriteOff },

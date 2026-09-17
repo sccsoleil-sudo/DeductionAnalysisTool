@@ -19,10 +19,12 @@ export const CODIFICATION = {
 
   /**
    * Reference Key 2 values dropped from every KPI, chart and table.
-   * PMT = SAP payment offset, XXX/XXXX = internal noise & offset rows.
+   * PMT = SAP payment offset (exact). Any code containing XX (e.g. XXX, XXXX, XXXXX).
    * Their totals are surfaced separately as an "excluded" footnote.
    */
-  excludedRefKey2: ['PMT', 'XXX', 'XXXX'],
+  excludedRefKey2Exact: ['PMT'] as const,
+  /** Substrings — Ref Key 2 containing any of these is excluded (*XX*). */
+  excludedRefKey2Contains: ['XX'] as const,
 
   /** Closed items carrying these codes count as money recovered. Blank = Payback. */
   recoveredRefKey2: ['', 'PAYBACK', 'RET', 'RT', 'R1R2'],
@@ -74,6 +76,13 @@ export const CODIFICATION = {
 
 export const UNCLASSIFIED = 'Unclassified';
 export const UNKNOWN_DIVISION = 'Unknown';
+
+/** Human-readable exclusion rule for footnotes (e.g. "PMT, *XX*"). */
+export function excludedCodesLabel(): string {
+  const exact = [...CODIFICATION.excludedRefKey2Exact];
+  const patterns = CODIFICATION.excludedRefKey2Contains.map((s) => `*${s}*`);
+  return [...exact, ...patterns].join(', ');
+}
 
 export const DIVISION_ORDER = Object.values(CODIFICATION.divisions);
 

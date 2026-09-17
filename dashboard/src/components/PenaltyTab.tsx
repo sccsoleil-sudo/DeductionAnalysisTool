@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import { CODIFICATION, PENALTY_CATEGORY_ORDER } from '../config/codification';
+import { CODIFICATION, excludedCodesLabel, PENALTY_CATEGORY_ORDER } from '../config/codification';
 import { compactMoney, count, longDate, money } from '../lib/format';
 import {
   byDivision,
   byPenaltyCategory,
+  claimedInPreviousYear,
   customerComparison,
   inPeriod,
   monthlySeries,
@@ -39,6 +40,10 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
 
   const cy = useMemo(() => periodTotals(rows, filters, currentYear), [rows, filters, currentYear]);
   const ly = useMemo(() => periodTotals(rows, filters, lastYear), [rows, filters, lastYear]);
+  const priorYearClaimed = useMemo(
+    () => claimedInPreviousYear(rows, filters, currentYear),
+    [rows, filters, currentYear],
+  );
 
   const cyRows = useMemo(
     () => rows.filter((r) => inPeriod(r, filters, currentYear)),
@@ -146,7 +151,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
             tone="primary"
             current={cy.deductionsReceived}
             previous={ly.deductionsReceived}
-            footnote={`${count(cy.rowCount)} lines · excludes ${CODIFICATION.excludedRefKey2.join(', ')}`}
+            footnote={`${count(cy.rowCount)} lines · excludes ${excludedCodesLabel()}`}
           />
           <KpiCard
             label="Confirmed (closed) penalties"
@@ -179,6 +184,12 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
             }
           />
         </div>
+        {filters.basis === 'clearing' && priorYearClaimed > 0 && (
+          <div className="note info" style={{ marginTop: 12, marginBottom: 0 }}>
+            {money(priorYearClaimed)} amount claimed in the previous year ({lastYear}, Claim Date)
+            — included here because Period basis is Clearing Date.
+          </div>
+        )}
       </SectionCard>
 
       {cy.excluded !== 0 && (
@@ -188,12 +199,12 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
           sectionExport={{
             filename: xlsxName('penalty-excluded-offsets'),
             headers: ['Description', 'Amount'],
-            rows: [{ Description: `Excluded (${CODIFICATION.excludedRefKey2.join(', ')})`, Amount: cy.excluded }],
+            rows: [{ Description: `Excluded (${excludedCodesLabel()})`, Amount: cy.excluded }],
           }}
         >
           <div className="note info" style={{ marginBottom: 0 }}>
             <strong>Excluded offset rows:</strong> {money(cy.excluded)} carrying{' '}
-            {CODIFICATION.excludedRefKey2.join(', ')} — held out of every penalty figure above.
+            {excludedCodesLabel()} — held out of every penalty figure above.
           </div>
         </SectionCard>
       )}

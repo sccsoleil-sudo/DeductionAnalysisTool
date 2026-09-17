@@ -46,9 +46,10 @@ window:
 | KPI | Definition |
 | --- | --- |
 | **Open AR balance** | Booked on or before the as-of date and not cleared by then (no Clearing Date / Clearing Journal Entry). A true point-in-time snapshot, so the prior-year bar is the balance *as it stood* a year ago. |
-| **Deductions received** | Total deduction value, excluding `PMT`, `XXX` and `XXXX` offset rows. |
+| **Deductions received** | Total deduction value, excluding `PMT` and any Ref Key 2 containing `XX` (e.g. `XXX`, `XXXX`, `XXXXX`). |
 | **Recovered** | Closed items coded blank, `PAYBACK`, `RET`, `RT` or `R1R2`. |
-| **Write-off** | Cleared Lost amounts: any code containing `WO`, plus cleared `COM*` (refuse to pay). Open COM stays in Open AR, not Write-off. COM / COM WO portions are broken out on the composition chart. |
+| **Lost** | Cleared amounts: any code containing `WO`, plus cleared `COM*` (refuse to pay). Open COM stays in Open AR, not Lost. COM / COM WO portions are broken out on the composition chart. |
+| **Identified actual shortage** | Closed items with Ref Key 2 = `SHO`. |
 
 Plus: recovery rate, division breakdown, monthly trend, outcome and open-item donuts, dispute-status
 split, customer comparison table, and top-5 open exposure. The Amazon R17 potential-shortage figure
@@ -69,7 +70,7 @@ This is the tab to check first when a total looks wrong.
 ## Filters
 
 Division, customer, YTD as-of date, and **period basis** — whether a claim belongs to a period by
-its `Journal Entry Date` (when the deduction was claimed, the default) or its `Clearing Date` (when
+its `Claim Date` (Journal Entry Date in the file — when the deduction was claimed, the default) or its `Clearing Date` (when
 it was settled). The two answer different questions; the basis is stated at the bottom of every view.
 
 ## Codification rules
@@ -78,7 +79,8 @@ Every business code lives in `src/config/codification.ts`. Nothing else in the a
 when Finance changes a code list you edit that file and nothing else.
 
 ```ts
-excludedRefKey2: ['PMT', 'XXX', 'XXXX'],
+excludedRefKey2Exact: ['PMT'],
+excludedRefKey2Contains: ['XX'], // *XX* — XXX, XXXX, XXXXX, …
 recoveredRefKey2: ['', 'PAYBACK', 'RET', 'RT', 'R1R2'],
 writeOffContains: 'WO',
 refuseToPayPrefix: 'COM',
@@ -89,12 +91,12 @@ actualShortageCode: 'SHO',
 
 1. **`COM WO` is its own bucket.** Section 7 tests the `COM` prefix before the `WO` substring, which
    makes both *Lost*. The app tests `WO` first so `COM WO` can be reported separately. Every total is
-   identical either way — `COM WO` is Lost under both readings — but it lets the Write-off view show
+   identical either way — `COM WO` is Lost under both readings — but it lets the Lost view show
    the COM portion separately, which is what was asked for.
 
-2. **`XXX` and `XXXX` are excluded from R02 as well as R16.** The book scopes `PMT` to R02 and `XXX`
-   to R16, but the real export carries all three codes in both. The exclusion list is applied
-   uniformly.
+2. **`PMT` and any `*XX*` code are excluded from R02 as well as R16.** The book scopes some codes
+   by reason; the app excludes `PMT` (exact) and any Ref Key 2 containing `XX` (e.g. `XXX`, `XXXX`,
+   `XXXXX`) uniformly.
 
 Also note the book expects a `Clearing Status` column. The current export does not have one, so the
 app falls back to the documented rule — blank Clearing Date *and* blank Clearing Journal Entry means

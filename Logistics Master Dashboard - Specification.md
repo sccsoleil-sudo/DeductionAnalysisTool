@@ -19,9 +19,10 @@ The shortage (R02) report compares **last year vs current year YTD** across four
 | Measure | Definition |
 | --- | --- |
 | **Open AR balance** | Items with no Clearing Date and no Clearing Journal Entry. |
-| **Deductions received** | Total deduction amount, excluding `XXX`, `XXXX` and `PMT`. |
+| **Deductions received** | Total deduction amount, excluding `PMT` and any Ref Key 2 containing `XX` (e.g. `XXX`, `XXXX`, `XXXXX`). |
 | **Recovered** | Per the codification in Section 4. |
-| **Write-off** | Cleared Lost: codes containing `WO`, plus cleared `COM*` (refuse to pay). The COM / COM WO portions are marked out separately. |
+| **Lost** | Cleared Lost: codes containing `WO`, plus cleared `COM*` (refuse to pay). The COM / COM WO portions are marked out separately. |
+| **Identified actual shortage** | Closed items with Ref Key 2 = `SHO`. |
 
 Penalties and fines (R16) — referred to as "violations" — form the second report.
 
@@ -66,7 +67,7 @@ spaces but are otherwise case-sensitive.
 | `Reference Key 2` | **Required** | Subcategory code. Drives outcome classification. See Sections 4–5. |
 | `Amount (CoCode Crcy)` | **Required** | Deduction/penalty amount in company code currency. |
 | `Customer Name` | **Required** | Used for filtering, customer overview and Top 5 charts. |
-| `Journal Entry Date` | **Required** | Claim entry date. Drives all time-based filtering and period reports. |
+| `Journal Entry Date` | **Required** | **Claim Date** in the app. Drives all time-based filtering and period reports. |
 | `Business Area` | Recommended | Division code (e.g. `02AA`). Needed for the division filter and breakdown charts. |
 | `Clearing Status` | Recommended | Numeric. `1` = open, `0` = closed. Primary source for open/closed logic. |
 | `Clearing Journal Entry` | Recommended | Fallback for open/closed: blank = open, populated = closed. |

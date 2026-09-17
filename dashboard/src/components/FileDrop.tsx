@@ -59,7 +59,8 @@ export function FileDrop({ onFile, busy }: FileDropProps) {
               <strong>Expected columns</strong> (extra columns are ignored, sheet order does not matter):
               <br />
               <code>Reason Code</code> <code>Reference Key 2</code> <code>Amount (CoCode Crcy)</code>{' '}
-              <code>Customer Name</code> <code>Journal Entry Date</code> <code>Business Area</code>{' '}
+              <code>Customer Name</code> <code>Claim Date (Journal Entry Date)</code>{' '}
+              <code>Business Area</code>{' '}
               <code>Clearing Date</code> <code>Clearing Journal Entry</code> <code>Dispute Status</code>
               <br />
               <br />

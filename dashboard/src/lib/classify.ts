@@ -8,7 +8,8 @@ export function normalizeCode(value: unknown): string {
 }
 
 export function isExcludedCode(refKey2: string): boolean {
-  return (CODIFICATION.excludedRefKey2 as readonly string[]).includes(refKey2);
+  if ((CODIFICATION.excludedRefKey2Exact as readonly string[]).includes(refKey2)) return true;
+  return CODIFICATION.excludedRefKey2Contains.some((part) => refKey2.includes(part));
 }
 
 export function divisionFor(businessArea: string): string {
@@ -33,7 +34,7 @@ const penaltyByCode = new Map(CODIFICATION.penaltyCategories.map((c) => [c.code,
  *
  * Follows the Section 7 decision tree, with one refinement: write-off is tested
  * before the COM prefix so that "COM WO" lands in its own bucket. Both are Lost
- * either way, so totals are unchanged — it only lets the Write-off KPI separate the
+ * either way, so totals are unchanged — it only lets the Lost KPI separate the
  * COM portion, which Finance asked to see called out.
  */
 export function classifyShortage(refKey2: string, isOpen: boolean): Outcome {

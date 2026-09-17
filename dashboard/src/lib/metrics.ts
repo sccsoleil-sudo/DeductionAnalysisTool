@@ -30,7 +30,7 @@ export interface Filters {
   customers: string[];
   /** Period basis for deductions, recovery, and most KPIs. */
   basis: PeriodBasis;
-  /** Period basis specifically for write-off KPIs (separate from deductions/recovery). */
+  /** Period basis specifically for Lost KPIs (separate from deductions/recovery). */
   plBasis: PeriodBasis;
   asOf: Date;
   /** Calendar months included in analysis (0 = Jan … 11 = Dec). */
@@ -38,7 +38,7 @@ export interface Filters {
 }
 
 export function basisLabel(basis: PeriodBasis): string {
-  return basis === 'journal' ? 'Journal Entry Date' : 'Clearing Date';
+  return basis === 'journal' ? 'Claim Date' : 'Clearing Date';
 }
 
 /** Default YTD month selection: January through the as-of month. */
@@ -169,7 +169,28 @@ export function applyFilters(rows: ClaimRow[], filters: Filters): ClaimRow[] {
  * rather than today's open items filtered by year.
  */
 export function openArBalance(rows: ClaimRow[], asOf: Date): number {
+  return openArBreakdown(rows, asOf).total;
+}
+
+export interface OpenArBreakdown {
+  total: number;
+  /** Open AR with Claim Date (Journal Entry Date) in `asOf`'s calendar year. */
+  claimedThisYear: number;
+  /** Open AR with Claim Date in the calendar year before `asOf`. */
+  claimedPreviousYear: number;
+  /** Open AR with Claim Date before the previous calendar year. */
+  claimedEarlier: number;
+}
+
+/** Split open AR by Claim Date year relative to the as-of year. */
+export function openArBreakdown(rows: ClaimRow[], asOf: Date): OpenArBreakdown {
+  const year = asOf.getFullYear();
+  const priorYear = year - 1;
   let total = 0;
+  let claimedThisYear = 0;
+  let claimedPreviousYear = 0;
+  let claimedEarlier = 0;
+
   for (const row of rows) {
     if (row.isExcluded) continue;
     const booked = row.journalEntryDate;
@@ -177,9 +198,15 @@ export function openArBalance(rows: ClaimRow[], asOf: Date): number {
     const cleared = row.clearingDate;
     if (cleared && cleared <= asOf) continue;
     if (!cleared && !row.isOpen) continue;
+
     total += row.amount;
+    const claimYear = booked.getFullYear();
+    if (claimYear === year) claimedThisYear += row.amount;
+    else if (claimYear === priorYear) claimedPreviousYear += row.amount;
+    else claimedEarlier += row.amount;
   }
-  return total;
+
+  return { total, claimedThisYear, claimedPreviousYear, claimedEarlier };
 }
 
 export function periodTotals(
@@ -195,23 +222,34 @@ export function periodTotals(
     sum(included.filter((r) => test(r.outcome)));
 
   const recovered = byOutcome((o) => o === 'Recovered');
-  const comWriteOff = byOutcome((o) => o === 'COM Write-Off');
-  const plainWriteOff = byOutcome((o) => o === 'Write-Off');
-  /** Cleared COM* (no WO) — counts as write-off only when a Clearing Date exists. */
-  const refuseToPay = sum(
-    included.filter((r) => r.outcome === 'Refuse to Pay' && r.clearingDate !== null),
-  );
-  /** P&L write-off: WO + COM WO + COM with Clearing Date. */
+  /**
+   * Lost = closed lines in this period window (by selected basis) that have a
+   * Clearing Date and RK2 in: WO | COM WO | COM (Refuse to Pay).
+   * Clearing Journal Entry alone is not enough — Clearing Date is required.
+   */
+  const lostWithClearingDate = (outcome: string) =>
+    sum(
+      included.filter((r) => r.outcome === outcome && r.clearingDate !== null),
+    );
+  const comWriteOff = lostWithClearingDate('COM Write-Off');
+  const plainWriteOff = lostWithClearingDate('Write-Off');
+  const refuseToPay = lostWithClearingDate('Refuse to Pay');
   const writeOffTotal = plainWriteOff + comWriteOff + refuseToPay;
   const actualShortage = byOutcome((o) => o === 'Actual Shortage');
   const openInPeriod = byOutcome((o) => o === 'Open');
   const unclassified = byOutcome((o) => o === UNCLASSIFIED);
 
-  const closedComWithoutClearingDate = sum(
-    included.filter((r) => r.outcome === 'Refuse to Pay' && r.clearingDate === null),
+  const closedLostLikeWithoutClearingDate = sum(
+    included.filter(
+      (r) =>
+        (r.outcome === 'Refuse to Pay' ||
+          r.outcome === 'Write-Off' ||
+          r.outcome === 'COM Write-Off') &&
+        r.clearingDate === null,
+    ),
   );
   const closedUniverse =
-    recovered + writeOffTotal + closedComWithoutClearingDate + actualShortage;
+    recovered + writeOffTotal + closedLostLikeWithoutClearingDate + actualShortage;
   const snapshot = new Date(
     year,
     filters.asOf.getMonth(),
@@ -223,6 +261,7 @@ export function periodTotals(
   );
 
   return {
+    /** Non-excluded amounts — PMT and *XX* codes held out (negatives included). */
     deductionsReceived: sum(included),
     recovered,
     writeOffTotal,
@@ -237,6 +276,53 @@ export function periodTotals(
     openArBalance: openArBalance(allRows, snapshot),
     rowCount: included.length,
   };
+}
+
+/**
+ * Of amounts in the analysis year by Clearing Date, how much was booked
+ * (Claim Date / Journal Entry Date) in the previous calendar year. Only meaningful when
+ * period basis is clearing; returns 0 otherwise.
+ */
+export function claimedInPreviousYear(
+  allRows: ClaimRow[],
+  filters: Filters,
+  year: number,
+): number {
+  if (filters.basis !== 'clearing') return 0;
+  const priorYear = year - 1;
+  return sum(
+    allRows.filter((row) => {
+      if (row.isExcluded || row.amount <= 0) return false;
+      if (!inPeriodWithBasis(row, filters, year, 'clearing')) return false;
+      const booked = row.journalEntryDate;
+      return booked !== null && booked.getFullYear() === priorYear;
+    }),
+  );
+}
+
+const LOST_OUTCOMES = new Set(['Write-Off', 'COM Write-Off', 'Refuse to Pay']);
+
+/**
+ * Of Lost in the analysis year by Clearing Date, how much was claimed
+ * (Claim Date) in the previous calendar year. Only when Lost basis is clearing.
+ */
+export function lostClaimedInPreviousYear(
+  allRows: ClaimRow[],
+  filters: Filters,
+  year: number,
+): number {
+  if (filters.plBasis !== 'clearing') return 0;
+  const priorYear = year - 1;
+  return sum(
+    allRows.filter((row) => {
+      if (row.isExcluded) return false;
+      if (!row.clearingDate) return false;
+      if (!LOST_OUTCOMES.has(row.outcome)) return false;
+      if (!inPeriodWithBasis(row, filters, year, 'clearing')) return false;
+      const booked = row.journalEntryDate;
+      return booked !== null && booked.getFullYear() === priorYear;
+    }),
+  );
 }
 
 function aggregate(

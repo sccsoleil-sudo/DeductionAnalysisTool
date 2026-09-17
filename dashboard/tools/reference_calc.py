@@ -15,7 +15,15 @@ import pandas as pd
 PATH = sys.argv[1] if len(sys.argv) > 1 else "../Logistics master data Final 202501 TO 202607.xlsx"
 
 REQUIRED = ["Reason Code", "Amount (CoCode Crcy)", "Customer Name", "Journal Entry Date"]
-EXCLUDED_CODES = {"PMT", "XXX", "XXXX"}
+EXCLUDED_EXACT = {"PMT"}
+EXCLUDED_CONTAINS = ("XX",)  # *XX* — XXX, XXXX, XXXXX, …
+
+
+def is_excluded(code: str) -> bool:
+    c = str(code).strip().upper()
+    if c in EXCLUDED_EXACT:
+        return True
+    return any(part in c for part in EXCLUDED_CONTAINS)
 RECOVERED_CODES = {"", "PAYBACK", "RET", "RT", "R1R2"}
 DIVISIONS = {"02AA": "CPD", "02AB": "PPD", "02AC": "LPD", "02AD": "LDB"}
 R16_CATS = {"FR": "Fill Rate", "EDI": "EDI", "PREP": "DC Charges", "SHIP": "Delivery", "KAM": "Commercial"}
@@ -56,7 +64,7 @@ print(pd.crosstab(data["cd"].isna(), data["cje"] == ""))
 
 
 def r02_outcome(row):
-    if row.rk2 in EXCLUDED_CODES:
+    if is_excluded(row.rk2):
         return "Excluded"
     if row.is_open:
         return "Open"
@@ -72,7 +80,7 @@ def r02_outcome(row):
 
 
 def r16_outcome(row):
-    if row.rk2 in EXCLUDED_CODES:
+    if is_excluded(row.rk2):
         return "Excluded"
     if row.is_open:
         return "Open"
@@ -125,9 +133,9 @@ for label, df, fn in [("R02 SHORTAGE", r02, r02_outcome), ("R16 PENALTIES", r16,
         lost = wo + rtp
         denom = rec + lost + sho
         d = pd.Timestamp(year=year, month=asof.month, day=asof.day)
-        oar = open_ar_asof(df[~df.rk2.isin(EXCLUDED_CODES)], d)["amt"].sum()
+        oar = open_ar_asof(df[~df.rk2.map(is_excluded)], d)["amt"].sum()
         print(f"\n  YTD {year} (Jan 1 -> {d.date()}):")
-        print(f"    Deduction received (excl {sorted(EXCLUDED_CODES)}): {incl.amt.sum():,.2f}  rows={len(incl)}")
+        print(f"    Deduction received (excl PMT, *XX*): {incl.amt.sum():,.2f}  rows={len(incl)}")
         print(f"    Recovered                                        : {rec:,.2f}")
         print(f"    P&L impact / Write-Off (total)                   : {wo:,.2f}")
         print(f"       of which COM Write-Off                        : {comwo:,.2f}")

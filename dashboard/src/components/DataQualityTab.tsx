@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CODIFICATION, UNCLASSIFIED } from '../config/codification';
+import { CODIFICATION, UNCLASSIFIED, excludedCodesLabel } from '../config/codification';
 import { classify } from '../lib/classify';
 import { count, isoDate, money } from '../lib/format';
 import { buildExportFilename } from '../lib/exportSpreadsheet';
@@ -144,7 +144,7 @@ export function DataQualityTab({ parse, rows, filters }: DataQualityTabProps) {
             rows: [
               { Issue: 'Unclassified Reference Key 2', Count: unclassified.length },
               { Issue: 'Unrecognized Business Area', Count: unknownDivision.length },
-              { Issue: 'Unreadable Journal Entry Date', Count: missingDates.length },
+              { Issue: 'Unreadable Claim Date', Count: missingDates.length },
             ],
           }}
         >
@@ -171,7 +171,7 @@ export function DataQualityTab({ parse, rows, filters }: DataQualityTabProps) {
                 </td>
               </tr>
               <tr>
-                <td>Unreadable Journal Entry Date</td>
+                <td>Unreadable Claim Date</td>
                 <td className="num">
                   {missingDates.length === 0 ? (
                     <span className="badge badge-green">none</span>
@@ -191,7 +191,7 @@ export function DataQualityTab({ parse, rows, filters }: DataQualityTabProps) {
             filename: xlsxName('data-quality-codification'),
             headers: ['Rule', 'Value'],
             rows: [
-              { Rule: 'Excluded codes', Value: CODIFICATION.excludedRefKey2.join(', ') },
+              { Rule: 'Excluded codes', Value: excludedCodesLabel() },
               {
                 Rule: 'Recovered codes',
                 Value: CODIFICATION.recoveredRefKey2.map((c) => c || '(blank)').join(', '),
@@ -206,7 +206,7 @@ export function DataQualityTab({ parse, rows, filters }: DataQualityTabProps) {
             <tbody>
               <tr>
                 <td>Excluded codes</td>
-                <td className="num">{CODIFICATION.excludedRefKey2.join(', ')}</td>
+                <td className="num">{excludedCodesLabel()}</td>
               </tr>
               <tr>
                 <td>Recovered codes</td>

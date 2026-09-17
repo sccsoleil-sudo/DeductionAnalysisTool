@@ -117,18 +117,18 @@ export function FiltersBar({
             value={filters.basis}
             onChange={(e) => onChange({ ...filters, basis: e.target.value as PeriodBasis })}
           >
-            <option value="journal">Journal Entry Date (when claimed)</option>
+            <option value="journal">Claim Date (when claimed)</option>
             <option value="clearing">Clearing Date (when settled)</option>
           </select>
         </div>
 
         <div className="field">
-          <span className="field-label">Write-off basis</span>
+          <span className="field-label">Lost basis</span>
           <select
             value={filters.plBasis}
             onChange={(e) => onChange({ ...filters, plBasis: e.target.value as PeriodBasis })}
           >
-            <option value="journal">Journal Entry Date</option>
+            <option value="journal">Claim Date</option>
             <option value="clearing">Clearing Date</option>
           </select>
         </div>
