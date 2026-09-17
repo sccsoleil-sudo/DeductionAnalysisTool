@@ -43,7 +43,7 @@ const filters: Filters = {
   divisions: [],
   customers: [],
   basis: 'journal',
-  plBasis: 'clearing',
+  plBasis: 'journal',
   asOf,
   months: defaultMonths(asOf),
 };

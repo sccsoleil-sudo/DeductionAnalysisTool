@@ -129,7 +129,7 @@ export default function App() {
         divisions: [],
         customers: [],
         basis: 'journal',
-        plBasis: 'clearing',
+        plBasis: 'journal',
         asOf,
         months: defaultMonths(asOf),
       };

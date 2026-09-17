@@ -171,7 +171,7 @@ export function FiltersBar({
                 divisions: [],
                 customers: [],
                 basis: 'journal',
-                plBasis: 'clearing',
+                plBasis: 'journal',
                 asOf: maxDate,
                 months: defaultMonths(maxDate),
               })
