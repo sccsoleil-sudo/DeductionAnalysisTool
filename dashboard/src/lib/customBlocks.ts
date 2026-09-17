@@ -54,6 +54,31 @@ export function createCustomBlock(title = 'New analysis'): CustomPivotBlock {
   };
 }
 
+/** Map legacy "Journal Date" pivot field name to "Claim Date". */
+export function migratePivotFieldNames(pivot: StoredPivotConfig): StoredPivotConfig {
+  const rename = (name: string) => (name === 'Journal Date' ? 'Claim Date' : name);
+  const renameList = (list: string[] | undefined) => list?.map(rename);
+  const renameKeyed = (obj: Record<string, unknown> | undefined) => {
+    if (!obj) return undefined;
+    const next: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      next[rename(key)] = value;
+    }
+    return next;
+  };
+  return {
+    ...pivot,
+    rows: renameList(pivot.rows) ?? [],
+    cols: renameList(pivot.cols) ?? [],
+    vals: renameList(pivot.vals) ?? [],
+    valueFilter: renameKeyed(pivot.valueFilter),
+    sorters: renameKeyed(pivot.sorters),
+    hiddenAttributes: renameList(pivot.hiddenAttributes),
+    hiddenFromAggregators: renameList(pivot.hiddenFromAggregators),
+    hiddenFromDragDrop: renameList(pivot.hiddenFromDragDrop),
+  };
+}
+
 /** Strip runtime-only fields before persisting pivot UI state. */
 export function pivotConfigFromUiState(state: Record<string, unknown>): StoredPivotConfig {
   return {

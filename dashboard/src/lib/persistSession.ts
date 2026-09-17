@@ -1,7 +1,7 @@
 import type { ClaimRow, ParseResult } from './types';
 import type { Filters } from './metrics';
 import { defaultMonths } from './metrics';
-import type { CustomPivotBlock } from './customBlocks';
+import { migratePivotFieldNames, type CustomPivotBlock } from './customBlocks';
 
 const DB_NAME = 'lmd-dashboard';
 const DB_VERSION = 1;
@@ -203,6 +203,7 @@ function fromStored(stored: StoredSession): SessionSnapshot {
     customBlocks: (stored.customBlocks ?? []).map((block) => ({
       ...block,
       segmentColors: block.segmentColors ?? {},
+      pivot: migratePivotFieldNames(block.pivot),
     })),
     filters: {
       divisions: stored.filters.divisions,

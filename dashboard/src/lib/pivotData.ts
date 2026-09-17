@@ -1,4 +1,4 @@
-import { isoDate } from './format';
+import { formatDateGranularity, isoDate } from './format';
 import type { ClaimRow } from './types';
 
 export const PIVOT_ATTRIBUTES = [
@@ -8,7 +8,10 @@ export const PIVOT_ATTRIBUTES = [
   'Reference Key 2',
   'Outcome',
   'Amount',
-  'Journal Date',
+  'Claim Date',
+  'Claim Month',
+  'Claim Quarter',
+  'Claim Year',
   'Clearing Date',
   'Dispute Status',
   'Business Area',
@@ -30,7 +33,10 @@ export function buildPivotData(rows: ClaimRow[]): (string | number)[][] {
     row.refKey2 || '(blank)',
     row.outcome,
     row.amount,
-    row.journalEntryDate ? isoDate(row.journalEntryDate) : '',
+    formatDateGranularity(row.journalEntryDate, 'date'),
+    formatDateGranularity(row.journalEntryDate, 'month'),
+    formatDateGranularity(row.journalEntryDate, 'quarter'),
+    formatDateGranularity(row.journalEntryDate, 'year'),
     row.clearingDate ? isoDate(row.clearingDate) : '',
     row.disputeStatus || '(blank)',
     row.businessArea || '(blank)',

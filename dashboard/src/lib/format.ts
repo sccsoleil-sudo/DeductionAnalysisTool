@@ -41,6 +41,19 @@ export function isoDate(date: Date | null): string {
   return date.toISOString().slice(0, 10);
 }
 
+export type DateGranularity = 'date' | 'month' | 'quarter' | 'year';
+
+/** Format a date for pivot grouping — lexicographically sortable strings. */
+export function formatDateGranularity(date: Date | null, granularity: DateGranularity): string {
+  if (!date) return '';
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth() + 1;
+  if (granularity === 'year') return String(y);
+  if (granularity === 'quarter') return `${y}-Q${Math.ceil(m / 3)}`;
+  if (granularity === 'month') return `${y}-${String(m).padStart(2, '0')}`;
+  return isoDate(date);
+}
+
 export function longDate(date: Date): string {
   return date.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
 }
