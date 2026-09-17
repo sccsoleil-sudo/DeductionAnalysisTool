@@ -5,7 +5,7 @@ import {
   UNCLASSIFIED,
   UNKNOWN_DIVISION,
 } from '../config/codification';
-import { disputeLabelFor, openBucketFor } from './classify';
+import { disputeLabelFor, openBucketFor, penaltyCategoryFromRefKey2 } from './classify';
 import type { ClaimRow, NamedTotal, PeriodTotals } from './types';
 
 export type PeriodBasis = 'journal' | 'clearing';
@@ -354,11 +354,13 @@ export function byDivision(rows: ClaimRow[]): NamedTotal[] {
   );
 }
 
+/** R16 category totals — all non-excluded lines (open and closed). */
 export function byPenaltyCategory(rows: ClaimRow[]): NamedTotal[] {
-  const closed = rows.filter(
-    (r) => !r.isExcluded && !r.isOpen && r.reasonCode === CODIFICATION.reasonCodes.penalty,
+  /** All non-excluded R16 rows — open and closed — bucketed by Ref Key 2. */
+  const all = rows.filter(
+    (r) => !r.isExcluded && r.reasonCode === CODIFICATION.reasonCodes.penalty,
   );
-  return aggregate(closed, (r) => r.outcome, PENALTY_CATEGORY_ORDER);
+  return aggregate(all, (r) => penaltyCategoryFromRefKey2(r.refKey2), PENALTY_CATEGORY_ORDER);
 }
 
 export function byCustomer(rows: ClaimRow[], limit = 5): NamedTotal[] {

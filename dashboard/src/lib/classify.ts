@@ -29,6 +29,17 @@ export function isAmazonRow(customerName: string, assignment: string, customerNu
 
 const penaltyByCode = new Map(CODIFICATION.penaltyCategories.map((c) => [c.code, c.label]));
 
+/** Penalty root-cause category from Ref Key 2 only (ignores open/closed). */
+export function penaltyCategoryFromRefKey2(refKey2: string): string {
+  if (isExcludedCode(refKey2)) return 'Excluded';
+  if ((CODIFICATION.recoveredRefKey2 as readonly string[]).includes(refKey2)) return 'Recovered';
+  if (refKey2.includes(CODIFICATION.writeOffContains)) {
+    return refKey2.startsWith(CODIFICATION.refuseToPayPrefix) ? 'COM Write-Off' : 'Write-Off';
+  }
+  if (refKey2.startsWith(CODIFICATION.refuseToPayPrefix)) return 'Refuse to Pay';
+  return penaltyByCode.get(refKey2) ?? UNCLASSIFIED;
+}
+
 /**
  * Outcome for a shortage (R02/R17) row.
  *
@@ -49,16 +60,11 @@ export function classifyShortage(refKey2: string, isOpen: boolean): Outcome {
   return UNCLASSIFIED;
 }
 
-/** Outcome for a penalty (R16) row. Open rows are excluded from penalty analytics. */
+/** Outcome for a penalty (R16) row — open still tracked as Open for status views. */
 export function classifyPenalty(refKey2: string, isOpen: boolean): Outcome {
   if (isExcludedCode(refKey2)) return 'Excluded';
   if (isOpen) return 'Open';
-  if ((CODIFICATION.recoveredRefKey2 as readonly string[]).includes(refKey2)) return 'Recovered';
-  if (refKey2.includes(CODIFICATION.writeOffContains)) {
-    return refKey2.startsWith(CODIFICATION.refuseToPayPrefix) ? 'COM Write-Off' : 'Write-Off';
-  }
-  if (refKey2.startsWith(CODIFICATION.refuseToPayPrefix)) return 'Refuse to Pay';
-  return penaltyByCode.get(refKey2) ?? UNCLASSIFIED;
+  return penaltyCategoryFromRefKey2(refKey2);
 }
 
 export function classify(reasonCode: string, refKey2: string, isOpen: boolean): Outcome {

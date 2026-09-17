@@ -64,8 +64,21 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
   const catCyMap = useMemo(() => new Map(catCy.map((c) => [c.name, c])), [catCy]);
   const catLyMap = useMemo(() => new Map(catLy.map((c) => [c.name, c.value])), [catLy]);
 
-  const closedTotalCy = useMemo(() => sum(catCy, (c) => c.value), [catCy]);
-  const closedTotalLy = useMemo(() => sum(catLy, (c) => c.value), [catLy]);
+  const categoryTotalAllCy = useMemo(() => sum(catCy, (c) => c.value), [catCy]);
+
+  const kpiCategories = CODIFICATION.penaltyCategories;
+  const categoryTotalCy = useMemo(
+    () => kpiCategories.reduce((acc, cat) => acc + (catCyMap.get(cat.label)?.value ?? 0), 0),
+    [kpiCategories, catCyMap],
+  );
+  const categoryTotalLy = useMemo(
+    () => kpiCategories.reduce((acc, cat) => acc + (catLyMap.get(cat.label) ?? 0), 0),
+    [kpiCategories, catLyMap],
+  );
+  const categoryTotalCountCy = useMemo(
+    () => kpiCategories.reduce((acc, cat) => acc + (catCyMap.get(cat.label)?.count ?? 0), 0),
+    [kpiCategories, catCyMap],
+  );
 
   const categoryConfig = useMemo(() => {
     const labels = PENALTY_CATEGORY_ORDER.filter(
@@ -121,21 +134,27 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
     (l) => catCy.some((c) => c.name === l) || catLy.some((c) => c.name === l),
   );
 
-  const kpiCategories = CODIFICATION.penaltyCategories;
-
   const kpiExport: SectionExport = {
     filename: xlsxName('penalty-key-metrics'),
-    headers: ['Category', lyLabel, cyLabel, 'Share of confirmed (%)'],
-    rows: kpiCategories.map((cat) => {
-      const cyVal = catCyMap.get(cat.label)?.value ?? 0;
-      return {
-        Category: cat.label,
-        [lyLabel]: catLyMap.get(cat.label) ?? 0,
-        [cyLabel]: cyVal,
-        'Share of confirmed (%)':
-          closedTotalCy === 0 ? 0 : Number(((cyVal / closedTotalCy) * 100).toFixed(1)),
-      };
-    }),
+    headers: ['Category', lyLabel, cyLabel, 'Share of total (%)'],
+    rows: [
+      {
+        Category: 'Total',
+        [lyLabel]: categoryTotalLy,
+        [cyLabel]: categoryTotalCy,
+        'Share of total (%)': 100,
+      },
+      ...kpiCategories.map((cat) => {
+        const cyVal = catCyMap.get(cat.label)?.value ?? 0;
+        return {
+          Category: cat.label,
+          [lyLabel]: catLyMap.get(cat.label) ?? 0,
+          [cyLabel]: cyVal,
+          'Share of total (%)':
+            categoryTotalCy === 0 ? 0 : Number(((cyVal / categoryTotalCy) * 100).toFixed(1)),
+        };
+      }),
+    ],
   };
 
   if (rows.length === 0) {
@@ -146,15 +165,23 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
     <>
       <SectionCard
         title="Key metrics"
-        subtitle={`${lyLabel} vs ${cyLabel} · by category (closed only) · ${rangeLabel}, cut off at ${longDate(asOf)}`}
+        subtitle={`${lyLabel} vs ${cyLabel} · by Ref Key 2 (open + closed) · ${rangeLabel}, cut off at ${longDate(asOf)}`}
         sectionExport={kpiExport}
       >
-        <div className="grid grid-5 kpi-grid">
+        <div className="grid grid-6 kpi-grid">
+          <KpiCard
+            label="Total"
+            value={compactMoney(categoryTotalCy)}
+            tone="primary"
+            current={categoryTotalCy}
+            previous={categoryTotalLy}
+            footnote={`${count(categoryTotalCountCy)} lines · Fill Rate + EDI + DC Charges + Delivery + Commercial`}
+          />
           {kpiCategories.map((cat, index) => {
             const cyCat = catCyMap.get(cat.label);
             const cyVal = cyCat?.value ?? 0;
             const lyVal = catLyMap.get(cat.label) ?? 0;
-            const share = closedTotalCy === 0 ? 0 : (cyVal / closedTotalCy) * 100;
+            const share = categoryTotalCy === 0 ? 0 : (cyVal / categoryTotalCy) * 100;
             return (
               <KpiCard
                 key={cat.code}
@@ -163,16 +190,15 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
                 tone={CATEGORY_TONES[index % CATEGORY_TONES.length]}
                 current={cyVal}
                 previous={lyVal}
-                footnote={`${count(cyCat?.count ?? 0)} lines · ${percent(share)} of confirmed · code ${cat.code}`}
+                footnote={`${count(cyCat?.count ?? 0)} lines · ${percent(share)} of total · code ${cat.code}`}
               />
             );
           })}
         </div>
         <div className="note info" style={{ marginTop: 12, marginBottom: 0 }}>
-          Confirmed penalties {money(closedTotalCy)}
-          {closedTotalLy !== 0 && <> (LY {money(closedTotalLy)})</>}
-          {cy.openInPeriod !== 0 && (
-            <> · Open (not in categories): {money(cy.openInPeriod)}</>
+          Category totals use Ref Key 2 for every R16 line (open and closed)
+          {categoryTotalAllCy !== categoryTotalCy && (
+            <> · other RF2 buckets {money(categoryTotalAllCy - categoryTotalCy)}</>
           )}
           {' · '}excludes {excludedCodesLabel()}
         </div>
@@ -204,7 +230,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
       <div className="grid grid-2">
         <SectionCard
           title={`Penalty category — ${lyLabel} vs ${cyLabel}`}
-          subtitle={`Closed rows only · ${rangeLabel}, cut off at ${longDate(asOf)}.`}
+          subtitle={`All R16 by Ref Key 2 (open + closed) · ${rangeLabel}, cut off at ${longDate(asOf)}.`}
           sectionExport={{
             filename: xlsxName('penalty-category-comparison'),
             headers: ['Category', lyLabel, cyLabel],
@@ -220,7 +246,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
 
         <SectionCard
           title={`Root cause mix — ${cyLabel}`}
-          subtitle="Share of confirmed penalty value by category."
+          subtitle="Share of penalty value by Ref Key 2 category."
           sectionExport={{
             filename: xlsxName('penalty-root-cause-mix'),
             headers: ['Category', 'Amount', 'Lines', 'Share (%)'],
@@ -229,7 +255,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
               Amount: c.value,
               Lines: c.count,
               'Share (%)':
-                closedTotalCy === 0 ? 0 : Number(((c.value / closedTotalCy) * 100).toFixed(1)),
+                categoryTotalAllCy === 0 ? 0 : Number(((c.value / categoryTotalAllCy) * 100).toFixed(1)),
             })),
           }}
         >
@@ -291,7 +317,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
 
         <SectionCard
           title={`Category detail — ${cyLabel}`}
-          subtitle="Confirmed penalties by root cause."
+          subtitle="Penalties by root cause (Ref Key 2; open and closed)."
           sectionExport={{
             filename: xlsxName('penalty-category-detail'),
             headers: ['Category', 'Lines', lyLabel, cyLabel, 'Share (%)'],
@@ -303,7 +329,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
                 [lyLabel]: previous,
                 [cyLabel]: cat.value,
                 'Share (%)':
-                  closedTotalCy === 0 ? 0 : Number(((cat.value / closedTotalCy) * 100).toFixed(1)),
+                  categoryTotalAllCy === 0 ? 0 : Number(((cat.value / categoryTotalAllCy) * 100).toFixed(1)),
               };
             }),
           }}
@@ -329,7 +355,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
                       <td className="num">{money(previous)}</td>
                       <td className="num">{money(cat.value)}</td>
                       <td className="num">
-                        {closedTotalCy === 0 ? '—' : `${((cat.value / closedTotalCy) * 100).toFixed(1)}%`}
+                        {categoryTotalAllCy === 0 ? '—' : `${((cat.value / categoryTotalAllCy) * 100).toFixed(1)}%`}
                       </td>
                     </tr>
                   );
@@ -340,7 +366,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
           <div className="legend-row">
             <span className="legend-item">
               <span className="legend-swatch" style={{ background: PALETTE.primary }} />
-              Open rows are excluded from this table by design (Section 5).
+              Categories are from Ref Key 2 for every R16 line (open and closed).
             </span>
           </div>
         </SectionCard>
