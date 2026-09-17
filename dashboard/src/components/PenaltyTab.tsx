@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
-import { excludedCodesLabel, PENALTY_CATEGORY_ORDER } from '../config/codification';
-import { compactMoney, count, longDate, money } from '../lib/format';
+import {
+  CODIFICATION,
+  excludedCodesLabel,
+  PENALTY_CATEGORY_ORDER,
+} from '../config/codification';
+import { compactMoney, count, longDate, money, percent } from '../lib/format';
 import {
   byDivision,
   byPenaltyCategory,
@@ -24,6 +28,8 @@ import type { SectionExport } from './DownloadExcelButton';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+const CATEGORY_TONES = ['primary', 'info', 'warn', 'danger', 'accent'] as const;
+
 interface PenaltyTabProps {
   rows: ClaimRow[];
   filters: Filters;
@@ -39,7 +45,6 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
   const xlsxName = (section: string) => buildExportFilename(section, filters);
 
   const cy = useMemo(() => periodTotals(rows, filters, currentYear), [rows, filters, currentYear]);
-  const ly = useMemo(() => periodTotals(rows, filters, lastYear), [rows, filters, lastYear]);
   const priorYearClaimed = useMemo(
     () => claimedInPreviousYear(rows, filters, currentYear),
     [rows, filters, currentYear],
@@ -56,6 +61,8 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
 
   const catCy = useMemo(() => byPenaltyCategory(cyRows), [cyRows]);
   const catLy = useMemo(() => byPenaltyCategory(lyRows), [lyRows]);
+  const catCyMap = useMemo(() => new Map(catCy.map((c) => [c.name, c])), [catCy]);
+  const catLyMap = useMemo(() => new Map(catLy.map((c) => [c.name, c.value])), [catLy]);
 
   const closedTotalCy = useMemo(() => sum(catCy, (c) => c.value), [catCy]);
   const closedTotalLy = useMemo(() => sum(catLy, (c) => c.value), [catLy]);
@@ -64,16 +71,14 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
     const labels = PENALTY_CATEGORY_ORDER.filter(
       (l) => catCy.some((c) => c.name === l) || catLy.some((c) => c.name === l),
     );
-    const cyMap = new Map(catCy.map((c) => [c.name, c.value]));
-    const lyMap = new Map(catLy.map((c) => [c.name, c.value]));
     return comparisonConfig(
       labels,
-      labels.map((l) => lyMap.get(l) ?? 0),
-      labels.map((l) => cyMap.get(l) ?? 0),
+      labels.map((l) => catLyMap.get(l) ?? 0),
+      labels.map((l) => catCyMap.get(l)?.value ?? 0),
       lyLabel,
       cyLabel,
     );
-  }, [catCy, catLy, lyLabel, cyLabel]);
+  }, [catCy, catLy, catCyMap, catLyMap, lyLabel, cyLabel]);
 
   const categoryMixConfig = useMemo(
     () =>
@@ -112,25 +117,25 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
     [rows, filters, currentYear],
   );
 
-  const largestCategory = catCy[0];
-
   const categoryLabels = PENALTY_CATEGORY_ORDER.filter(
     (l) => catCy.some((c) => c.name === l) || catLy.some((c) => c.name === l),
   );
 
+  const kpiCategories = CODIFICATION.penaltyCategories;
+
   const kpiExport: SectionExport = {
     filename: xlsxName('penalty-key-metrics'),
-    headers: ['Metric', lyLabel, cyLabel],
-    rows: [
-      { Metric: 'Penalties charged', [lyLabel]: ly.deductionsReceived, [cyLabel]: cy.deductionsReceived },
-      { Metric: 'Confirmed (closed) penalties', [lyLabel]: closedTotalLy, [cyLabel]: closedTotalCy },
-      { Metric: 'Open penalties (excluded)', [lyLabel]: ly.openInPeriod, [cyLabel]: cy.openInPeriod },
-      {
-        Metric: 'Largest root cause',
-        [lyLabel]: catLy[0]?.name ?? '',
-        [cyLabel]: largestCategory?.name ?? '',
-      },
-    ],
+    headers: ['Category', lyLabel, cyLabel, 'Share of confirmed (%)'],
+    rows: kpiCategories.map((cat) => {
+      const cyVal = catCyMap.get(cat.label)?.value ?? 0;
+      return {
+        Category: cat.label,
+        [lyLabel]: catLyMap.get(cat.label) ?? 0,
+        [cyLabel]: cyVal,
+        'Share of confirmed (%)':
+          closedTotalCy === 0 ? 0 : Number(((cyVal / closedTotalCy) * 100).toFixed(1)),
+      };
+    }),
   };
 
   if (rows.length === 0) {
@@ -141,51 +146,38 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
     <>
       <SectionCard
         title="Key metrics"
-        subtitle={`${lyLabel} vs ${cyLabel} · ${rangeLabel}, cut off at ${longDate(asOf)}`}
+        subtitle={`${lyLabel} vs ${cyLabel} · by category (closed only) · ${rangeLabel}, cut off at ${longDate(asOf)}`}
         sectionExport={kpiExport}
       >
-        <div className="grid grid-4 kpi-grid">
-          <KpiCard
-            label="Penalties charged"
-            value={compactMoney(cy.deductionsReceived)}
-            tone="primary"
-            current={cy.deductionsReceived}
-            previous={ly.deductionsReceived}
-            footnote={`${count(cy.rowCount)} lines · excludes ${excludedCodesLabel()}`}
-          />
-          <KpiCard
-            label="Confirmed (closed) penalties"
-            value={compactMoney(closedTotalCy)}
-            tone="danger"
-            current={closedTotalCy}
-            previous={closedTotalLy}
-            footnote="Only closed R16 rows count toward category analytics"
-          />
-          <KpiCard
-            label="Open penalties (excluded)"
-            value={compactMoney(cy.openInPeriod)}
-            tone="warn"
-            current={cy.openInPeriod}
-            previous={ly.openInPeriod}
-            footnote="Not yet confirmed — held out of all category charts"
-          />
-          <KpiCard
-            label="Largest root cause"
-            value={largestCategory ? largestCategory.name : '—'}
-            tone="info"
-            footnote={
-              largestCategory
-                ? `${money(largestCategory.value)} · ${
-                    closedTotalCy === 0
-                      ? '0'
-                      : ((largestCategory.value / closedTotalCy) * 100).toFixed(1)
-                  }% of confirmed penalties`
-                : 'No confirmed penalties in period'
-            }
-          />
+        <div className="grid grid-5 kpi-grid">
+          {kpiCategories.map((cat, index) => {
+            const cyCat = catCyMap.get(cat.label);
+            const cyVal = cyCat?.value ?? 0;
+            const lyVal = catLyMap.get(cat.label) ?? 0;
+            const share = closedTotalCy === 0 ? 0 : (cyVal / closedTotalCy) * 100;
+            return (
+              <KpiCard
+                key={cat.code}
+                label={cat.label}
+                value={compactMoney(cyVal)}
+                tone={CATEGORY_TONES[index % CATEGORY_TONES.length]}
+                current={cyVal}
+                previous={lyVal}
+                footnote={`${count(cyCat?.count ?? 0)} lines · ${percent(share)} of confirmed · code ${cat.code}`}
+              />
+            );
+          })}
+        </div>
+        <div className="note info" style={{ marginTop: 12, marginBottom: 0 }}>
+          Confirmed penalties {money(closedTotalCy)}
+          {closedTotalLy !== 0 && <> (LY {money(closedTotalLy)})</>}
+          {cy.openInPeriod !== 0 && (
+            <> · Open (not in categories): {money(cy.openInPeriod)}</>
+          )}
+          {' · '}excludes {excludedCodesLabel()}
         </div>
         {filters.basis === 'clearing' && priorYearClaimed > 0 && (
-          <div className="note info" style={{ marginTop: 12, marginBottom: 0 }}>
+          <div className="note info" style={{ marginTop: 8, marginBottom: 0 }}>
             {money(priorYearClaimed)} amount claimed in the previous year ({lastYear}, Claim Date)
             — included here because Period basis is Clearing Date.
           </div>
@@ -218,8 +210,8 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
             headers: ['Category', lyLabel, cyLabel],
             rows: categoryLabels.map((label) => ({
               Category: label,
-              [lyLabel]: catLy.find((c) => c.name === label)?.value ?? 0,
-              [cyLabel]: catCy.find((c) => c.name === label)?.value ?? 0,
+              [lyLabel]: catLyMap.get(label) ?? 0,
+              [cyLabel]: catCyMap.get(label)?.value ?? 0,
             })),
           }}
         >
