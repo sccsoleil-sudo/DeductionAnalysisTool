@@ -79,7 +79,7 @@ report('R16 PENALTIES', parse.rows.filter((r) => r.reasonCode === CODIFICATION.r
 const cyPenalties = parse.rows.filter(
   (r) => r.reasonCode === CODIFICATION.reasonCodes.penalty && inPeriod(r, filters, currentYear),
 );
-console.log('\n  Penalty categories (closed only, current YTD):');
+console.log('\n  Penalty categories (by RF2, open+closed, current YTD):');
 for (const c of byPenaltyCategory(cyPenalties)) {
   console.log(`    ${c.name.padEnd(14)} ${String(c.count).padStart(6)} ${fmt(c.value)}`);
 }
