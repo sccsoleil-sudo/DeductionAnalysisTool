@@ -123,7 +123,7 @@ export function FiltersBar({
         </div>
 
         <div className="field">
-          <span className="field-label">P&amp;L impact basis</span>
+          <span className="field-label">Write-off basis</span>
           <select
             value={filters.plBasis}
             onChange={(e) => onChange({ ...filters, plBasis: e.target.value as PeriodBasis })}

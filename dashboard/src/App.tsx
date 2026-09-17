@@ -351,7 +351,7 @@ export default function App() {
                   Deductions &amp; recovery on {filters.basis === 'journal' ? 'Journal Entry Date' : 'Clearing Date'}
                   {filters.plBasis !== filters.basis && (
                     <>
-                      ; P&amp;L impact on{' '}
+                      ; Write-off on{' '}
                       {filters.plBasis === 'journal' ? 'Journal Entry Date' : 'Clearing Date'}
                     </>
                   )}

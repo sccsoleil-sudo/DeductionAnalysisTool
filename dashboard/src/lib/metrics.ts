@@ -30,7 +30,7 @@ export interface Filters {
   customers: string[];
   /** Period basis for deductions, recovery, and most KPIs. */
   basis: PeriodBasis;
-  /** Period basis specifically for P&L impact (write-off composition). */
+  /** Period basis specifically for write-off KPIs (separate from deductions/recovery). */
   plBasis: PeriodBasis;
   asOf: Date;
   /** Calendar months included in analysis (0 = Jan … 11 = Dec). */
@@ -197,13 +197,21 @@ export function periodTotals(
   const recovered = byOutcome((o) => o === 'Recovered');
   const comWriteOff = byOutcome((o) => o === 'COM Write-Off');
   const plainWriteOff = byOutcome((o) => o === 'Write-Off');
-  const writeOffTotal = comWriteOff + plainWriteOff;
-  const refuseToPay = byOutcome((o) => o === 'Refuse to Pay');
+  /** Cleared COM* (no WO) — counts as write-off only when a Clearing Date exists. */
+  const refuseToPay = sum(
+    included.filter((r) => r.outcome === 'Refuse to Pay' && r.clearingDate !== null),
+  );
+  /** P&L write-off: WO + COM WO + COM with Clearing Date. */
+  const writeOffTotal = plainWriteOff + comWriteOff + refuseToPay;
   const actualShortage = byOutcome((o) => o === 'Actual Shortage');
   const openInPeriod = byOutcome((o) => o === 'Open');
   const unclassified = byOutcome((o) => o === UNCLASSIFIED);
 
-  const closedUniverse = recovered + writeOffTotal + refuseToPay + actualShortage;
+  const closedComWithoutClearingDate = sum(
+    included.filter((r) => r.outcome === 'Refuse to Pay' && r.clearingDate === null),
+  );
+  const closedUniverse =
+    recovered + writeOffTotal + closedComWithoutClearingDate + actualShortage;
   const snapshot = new Date(
     year,
     filters.asOf.getMonth(),

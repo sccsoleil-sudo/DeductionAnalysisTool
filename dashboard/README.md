@@ -48,7 +48,7 @@ window:
 | **Open AR balance** | Booked on or before the as-of date and not cleared by then (no Clearing Date / Clearing Journal Entry). A true point-in-time snapshot, so the prior-year bar is the balance *as it stood* a year ago. |
 | **Deductions received** | Total deduction value, excluding `PMT`, `XXX` and `XXXX` offset rows. |
 | **Recovered** | Closed items coded blank, `PAYBACK`, `RET`, `RT` or `R1R2`. |
-| **P&L impact** | Write-offs — any code containing `WO`. The `COM WO` portion is broken out separately in the KPI footnote and stacked in its own colour on the composition chart. |
+| **Write-off** | Cleared Lost amounts: any code containing `WO`, plus cleared `COM*` (refuse to pay). Open COM stays in Open AR, not Write-off. COM / COM WO portions are broken out on the composition chart. |
 
 Plus: recovery rate, division breakdown, monthly trend, outcome and open-item donuts, dispute-status
 split, customer comparison table, and top-5 open exposure. The Amazon R17 potential-shortage figure
@@ -89,8 +89,8 @@ actualShortageCode: 'SHO',
 
 1. **`COM WO` is its own bucket.** Section 7 tests the `COM` prefix before the `WO` substring, which
    makes both *Lost*. The app tests `WO` first so `COM WO` can be reported separately. Every total is
-   identical either way — `COM WO` is Lost under both readings — but it lets the P&L view show the
-   COM portion of the write-off, which is what was asked for.
+   identical either way — `COM WO` is Lost under both readings — but it lets the Write-off view show
+   the COM portion separately, which is what was asked for.
 
 2. **`XXX` and `XXXX` are excluded from R02 as well as R16.** The book scopes `PMT` to R02 and `XXX`
    to R16, but the real export carries all three codes in both. The exclusion list is applied

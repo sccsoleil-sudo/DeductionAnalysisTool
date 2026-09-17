@@ -56,9 +56,9 @@ function report(label: string, rows: ClaimRow[]) {
     console.log(`\n  YTD ${year}`);
     console.log(`    Deductions received (excl ${CODIFICATION.excludedRefKey2.join('/')}) ${fmt(t.deductionsReceived)}`);
     console.log(`    Recovered                                        ${fmt(t.recovered)}`);
-    console.log(`    P&L impact - write-off total                     ${fmt(t.writeOffTotal)}`);
+    console.log(`    Write-off total (WO + COM WO + COM w/ Clearing Date) ${fmt(t.writeOffTotal)}`);
     console.log(`       of which COM write-off                        ${fmt(t.comWriteOff)}`);
-    console.log(`    Refuse to pay (COM, not written off)             ${fmt(t.refuseToPay)}`);
+    console.log(`       of which COM with Clearing Date               ${fmt(t.refuseToPay)}`);
     console.log(`    Actual shortage                                  ${fmt(t.actualShortage)}`);
     console.log(`    Open in period                                   ${fmt(t.openInPeriod)}`);
     console.log(`    Unclassified                                     ${fmt(t.unclassified)}`);

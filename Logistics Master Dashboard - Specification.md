@@ -21,7 +21,7 @@ The shortage (R02) report compares **last year vs current year YTD** across four
 | **Open AR balance** | Items with no Clearing Date and no Clearing Journal Entry. |
 | **Deductions received** | Total deduction amount, excluding `XXX`, `XXXX` and `PMT`. |
 | **Recovered** | Per the codification in Section 4. |
-| **P&L impact** | Write-off, with the **COM write-off portion marked out separately**. |
+| **Write-off** | Cleared Lost: codes containing `WO`, plus cleared `COM*` (refuse to pay). The COM / COM WO portions are marked out separately. |
 
 Penalties and fines (R16) — referred to as "violations" — form the second report.
 

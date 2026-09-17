@@ -33,8 +33,8 @@ const penaltyByCode = new Map(CODIFICATION.penaltyCategories.map((c) => [c.code,
  *
  * Follows the Section 7 decision tree, with one refinement: write-off is tested
  * before the COM prefix so that "COM WO" lands in its own bucket. Both are Lost
- * either way, so totals are unchanged — it only lets the P&L view separate the
- * COM portion of the write-off, which Finance asked to see called out.
+ * either way, so totals are unchanged — it only lets the Write-off KPI separate the
+ * COM portion, which Finance asked to see called out.
  */
 export function classifyShortage(refKey2: string, isOpen: boolean): Outcome {
   if (isExcludedCode(refKey2)) return 'Excluded';

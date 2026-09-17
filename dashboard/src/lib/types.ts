@@ -53,8 +53,11 @@ export interface PeriodTotals {
   deductionsReceived: number;
   recovered: number;
   writeOffTotal: number;
+  /** Cleared COM WO codes. */
   comWriteOff: number;
+  /** Cleared codes containing WO but not COM-prefixed. */
   plainWriteOff: number;
+  /** COM* without WO that has a Clearing Date — included in writeOffTotal. */
   refuseToPay: number;
   actualShortage: number;
   openInPeriod: number;
