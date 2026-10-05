@@ -68,14 +68,14 @@ def r02_outcome(row):
         return "Excluded"
     if row.is_open:
         return "Open"
-    if row.rk2 in RECOVERED_CODES:
+    if row.rk2 in RECOVERED_CODES or "APPROVED" in row.rk2:
         return "Recovered"
+    if "COM" in row.rk2:
+        return "Refused"
     if "WO" in row.rk2:
-        return "COM Write-Off" if row.rk2.startswith("COM") else "Write-Off"
-    if row.rk2.startswith("COM"):
-        return "Refuse to Pay"
+        return "Write-off"
     if row.rk2 == "SHO":
-        return "Actual Shortage"
+        return "SHO"
     return "Unclassified"
 
 
@@ -86,10 +86,10 @@ def r16_outcome(row):
         return "Open"
     if row.rk2 in RECOVERED_CODES:
         return "Recovered"
+    if "COM" in row.rk2:
+        return "Refused"
     if "WO" in row.rk2:
-        return "COM Write-Off" if row.rk2.startswith("COM") else "Write-Off"
-    if row.rk2.startswith("COM"):
-        return "Refuse to Pay"
+        return "Write-off"
     return R16_CATS.get(row.rk2, "Unclassified")
 
 
@@ -125,10 +125,10 @@ for label, df, fn in [("R02 SHORTAGE", r02, r02_outcome), ("R16 PENALTIES", r16,
         w = ytd(df, year)
         incl = w[w.outcome != "Excluded"]
         rec = incl.loc[incl.outcome == "Recovered", "amt"].sum()
-        wo = incl.loc[incl.outcome.isin(["Write-Off", "COM Write-Off"]), "amt"].sum()
-        comwo = incl.loc[incl.outcome == "COM Write-Off", "amt"].sum()
+        wo = incl.loc[incl.outcome.isin(["Write-off", "Refused"]), "amt"].sum()
+        comwo = incl.loc[incl.outcome == "Refused", "amt"].sum()
         rtp = incl.loc[incl.outcome == "Refuse to Pay", "amt"].sum()
-        sho = incl.loc[incl.outcome == "Actual Shortage", "amt"].sum()
+        sho = incl.loc[incl.outcome == "SHO", "amt"].sum()
         opn = incl.loc[incl.outcome == "Open", "amt"].sum()
         lost = wo + rtp
         denom = rec + lost + sho

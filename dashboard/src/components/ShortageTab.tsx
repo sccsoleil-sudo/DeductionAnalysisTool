@@ -124,7 +124,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
   const headlineConfig = useMemo(
     () =>
       comparisonConfig(
-        ['Open AR balance', 'Deductions received', 'Recovered', 'Lost', 'Actual shortage'],
+        ['Open AR balance', 'Deductions received', 'Recovered', 'Lost', 'SHO'],
         [ly.openArBalance, ly.deductionsReceived, ly.recovered, lyPl.writeOffTotal, ly.actualShortage],
         [cy.openArBalance, cy.deductionsReceived, cy.recovered, cyPl.writeOffTotal, cy.actualShortage],
         lyLabel,
@@ -138,14 +138,9 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
       stackedBarConfig(
         [lyLabel, cyLabel],
         [
-          { label: 'Write-off (WO)', data: [lyPl.plainWriteOff, cyPl.plainWriteOff], color: PALETTE.danger },
-          { label: 'COM write-off (COM WO)', data: [lyPl.comWriteOff, cyPl.comWriteOff], color: PALETTE.warn },
-          {
-            label: 'COM with Clearing Date',
-            data: [lyPl.refuseToPay, cyPl.refuseToPay],
-            color: PALETTE.slate,
-          },
-          { label: 'Actual shortage (SHO)', data: [lyPl.actualShortage, cyPl.actualShortage], color: PALETTE.violet },
+          { label: 'Write-off', data: [lyPl.plainWriteOff, cyPl.plainWriteOff], color: PALETTE.danger },
+          { label: 'Refused', data: [lyPl.comWriteOff, cyPl.comWriteOff], color: PALETTE.warn },
+          { label: 'SHO', data: [lyPl.actualShortage, cyPl.actualShortage], color: PALETTE.violet },
         ],
       ),
     [lyPl, cyPl, lyLabel, cyLabel],
@@ -234,9 +229,9 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
       { Metric: 'Deductions received', [lyLabel]: ly.deductionsReceived, [cyLabel]: cy.deductionsReceived },
       { Metric: 'Recovered', [lyLabel]: ly.recovered, [cyLabel]: cy.recovered },
       { Metric: 'Lost', [lyLabel]: lyPl.writeOffTotal, [cyLabel]: cyPl.writeOffTotal },
-      { Metric: 'Identified actual shortage (SHO)', [lyLabel]: ly.actualShortage, [cyLabel]: cy.actualShortage },
-      { Metric: 'COM write-off portion', [lyLabel]: lyPl.comWriteOff, [cyLabel]: cyPl.comWriteOff },
-      { Metric: 'COM with Clearing Date', [lyLabel]: lyPl.refuseToPay, [cyLabel]: cyPl.refuseToPay },
+      { Metric: 'Write-off', [lyLabel]: lyPl.plainWriteOff, [cyLabel]: cyPl.plainWriteOff },
+      { Metric: 'Refused', [lyLabel]: lyPl.comWriteOff, [cyLabel]: cyPl.comWriteOff },
+      { Metric: 'SHO', [lyLabel]: ly.actualShortage, [cyLabel]: cy.actualShortage },
       { Metric: 'Recovery rate (%)', [lyLabel]: ly.recoveryRate, [cyLabel]: cy.recoveryRate },
     ],
   };
@@ -305,7 +300,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
             current={cyPl.writeOffTotal}
             previous={lyPl.writeOffTotal}
             footnote={[
-              `${basisLabel(filters.plBasis)} · COM with Clearing Date ${money(cyPl.refuseToPay + cyPl.comWriteOff)}`,
+              `${basisLabel(filters.plBasis)} · Refused ${money(cyPl.comWriteOff)}`,
               ...(filters.plBasis === 'clearing'
                 ? [
                     `+ ${money(lostPriorYearClaimed)} claimed in previous year (${lastYear}, Claim Date)`,
@@ -314,7 +309,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
             ].join('\n')}
           />
           <KpiCard
-            label="Identified actual shortage"
+            label="SHO"
             value={compactMoney(cy.actualShortage)}
             tone="warn"
             current={cy.actualShortage}
@@ -367,11 +362,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
               { Metric: 'Deductions received', [lyLabel]: ly.deductionsReceived, [cyLabel]: cy.deductionsReceived },
               { Metric: 'Recovered', [lyLabel]: ly.recovered, [cyLabel]: cy.recovered },
               { Metric: 'Lost', [lyLabel]: lyPl.writeOffTotal, [cyLabel]: cyPl.writeOffTotal },
-              {
-                Metric: 'Identified actual shortage (SHO)',
-                [lyLabel]: ly.actualShortage,
-                [cyLabel]: cy.actualShortage,
-              },
+              { Metric: 'SHO', [lyLabel]: ly.actualShortage, [cyLabel]: cy.actualShortage },
             ],
           }}
         >
@@ -380,19 +371,14 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
 
         <SectionCard
           title="Lost composition"
-          subtitle={`WO + COM WO + COM with Clearing Date · on ${basisLabel(filters.plBasis)}.`}
+          subtitle={`Write-off, Refused, and SHO · on ${basisLabel(filters.plBasis)}.`}
           sectionExport={{
             filename: xlsxName('shortage-lost-composition'),
             headers: ['Component', lyLabel, cyLabel],
             rows: [
-              { Component: 'Write-off (WO)', [lyLabel]: lyPl.plainWriteOff, [cyLabel]: cyPl.plainWriteOff },
-              { Component: 'COM write-off (COM WO)', [lyLabel]: lyPl.comWriteOff, [cyLabel]: cyPl.comWriteOff },
-              {
-                Component: 'COM with Clearing Date',
-                [lyLabel]: lyPl.refuseToPay,
-                [cyLabel]: cyPl.refuseToPay,
-              },
-              { Component: 'Actual shortage (SHO)', [lyLabel]: lyPl.actualShortage, [cyLabel]: cyPl.actualShortage },
+              { Component: 'Write-off', [lyLabel]: lyPl.plainWriteOff, [cyLabel]: cyPl.plainWriteOff },
+              { Component: 'Refused', [lyLabel]: lyPl.comWriteOff, [cyLabel]: cyPl.comWriteOff },
+              { Component: 'SHO', [lyLabel]: lyPl.actualShortage, [cyLabel]: cyPl.actualShortage },
             ],
           }}
         >

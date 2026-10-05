@@ -30,7 +30,7 @@ export function DataQualityTab({ parse, rows, filters }: DataQualityTabProps) {
     const map = new Map<string, CodeStat>();
     for (const row of rows) {
       const key = `${row.reasonCode}|${row.refKey2}`;
-      const outcome = classify(row.reasonCode, row.refKey2, false);
+      const outcome = classify(row.reasonCode, row.refKey2, false, row.itemText);
       const entry = map.get(key) ?? {
         reasonCode: row.reasonCode,
         refKey2: row.refKey2,
@@ -194,11 +194,11 @@ export function DataQualityTab({ parse, rows, filters }: DataQualityTabProps) {
               { Rule: 'Excluded codes', Value: excludedCodesLabel() },
               {
                 Rule: 'Recovered codes',
-                Value: CODIFICATION.recoveredRefKey2.map((c) => c || '(blank)').join(', '),
+                Value: `${CODIFICATION.recoveredRefKey2.map((c) => c || '(blank)').join(', ')}; shortage also contains ${CODIFICATION.shortageRecoveredContains.join(', ')}`,
               },
               { Rule: 'Write-off marker', Value: `contains "${CODIFICATION.writeOffContains}"` },
-              { Rule: 'Refuse-to-pay marker', Value: `starts with "${CODIFICATION.refuseToPayPrefix}"` },
-              { Rule: 'Actual shortage', Value: CODIFICATION.actualShortageCode },
+              { Rule: 'Refused marker', Value: `contains "${CODIFICATION.refuseToPayPrefix}" (cleared)` },
+              { Rule: 'SHO', Value: CODIFICATION.actualShortageCode },
             ],
           }}
         >
@@ -211,7 +211,8 @@ export function DataQualityTab({ parse, rows, filters }: DataQualityTabProps) {
               <tr>
                 <td>Recovered codes</td>
                 <td className="num">
-                  {CODIFICATION.recoveredRefKey2.map((c) => c || '(blank)').join(', ')}
+                  {CODIFICATION.recoveredRefKey2.map((c) => c || '(blank)').join(', ')}; shortage also
+                  contains {CODIFICATION.shortageRecoveredContains.join(', ')}
                 </td>
               </tr>
               <tr>
@@ -219,11 +220,11 @@ export function DataQualityTab({ parse, rows, filters }: DataQualityTabProps) {
                 <td className="num">contains “{CODIFICATION.writeOffContains}”</td>
               </tr>
               <tr>
-                <td>Refuse-to-pay marker</td>
-                <td className="num">starts with “{CODIFICATION.refuseToPayPrefix}”</td>
+                <td>Refused marker</td>
+                <td className="num">contains “{CODIFICATION.refuseToPayPrefix}” when cleared</td>
               </tr>
               <tr>
-                <td>Actual shortage</td>
+                <td>SHO</td>
                 <td className="num">{CODIFICATION.actualShortageCode}</td>
               </tr>
             </tbody>

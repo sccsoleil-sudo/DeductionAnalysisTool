@@ -28,11 +28,13 @@ export const CODIFICATION = {
 
   /** Closed items carrying these codes count as money recovered. Blank = Payback. */
   recoveredRefKey2: ['', 'PAYBACK', 'RET', 'RT', 'R1R2'],
+  /** Shortage only: Reference Key 2 containing any of these is Recovered (e.g. APPROVED). */
+  shortageRecoveredContains: ['APPROVED'] as const,
 
   /** Substring marking an internal write-off, e.g. WO, WO01, COM WO. */
   writeOffContains: 'WO',
 
-  /** Prefix marking a customer refusal to pay, e.g. COM, COMM, COM01. */
+  /** Substring marking a cleared Refused line: COM, COM WO, or WO COM. */
   refuseToPayPrefix: 'COM',
 
   /** Confirmed physical shortage — reserved separately from write-offs. */

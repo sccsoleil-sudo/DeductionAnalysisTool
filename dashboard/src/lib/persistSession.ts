@@ -2,7 +2,8 @@ import type { ClaimRow, ParseResult } from './types';
 import type { Filters } from './metrics';
 import { defaultMonths } from './metrics';
 import { migratePivotFieldNames, type CustomPivotBlock } from './customBlocks';
-import { classify, isExcludedCode } from './classify';
+import { CODIFICATION } from '../config/codification';
+import { classify, isExcludedCode, penaltyLookupCode } from './classify';
 
 const DB_NAME = 'lmd-dashboard';
 const DB_VERSION = 1;
@@ -99,8 +100,13 @@ function toStoredRow(row: ClaimRow): StoredRow {
 function fromStoredRow(row: StoredRow): ClaimRow {
   const reasonCode = row[11];
   const refKey2 = row[12];
+  const itemText = row[8];
   const isOpen = row[19] === 1;
-  const isExcluded = isExcludedCode(refKey2);
+  const lookupCode =
+    reasonCode === CODIFICATION.reasonCodes.penalty
+      ? penaltyLookupCode(refKey2, itemText)
+      : refKey2;
+  const isExcluded = isExcludedCode(lookupCode);
   return {
     key: row[0],
     sheet: row[1],
@@ -110,7 +116,7 @@ function fromStoredRow(row: StoredRow): ClaimRow {
     paymentReference: row[5],
     invoiceReference: row[6],
     journalEntry: row[7],
-    itemText: row[8],
+    itemText,
     disputeReason: row[9],
     disputeStatus: row[10],
     reasonCode,
@@ -124,7 +130,7 @@ function fromStoredRow(row: StoredRow): ClaimRow {
     isOpen,
     isExcluded,
     isAmazon: row[21] === 1,
-    outcome: classify(reasonCode, refKey2, isOpen),
+    outcome: classify(reasonCode, refKey2, isOpen, itemText),
   };
 }
 

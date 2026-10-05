@@ -57,9 +57,9 @@ function report(label: string, rows: ClaimRow[]) {
     console.log(`    Deductions received (excl ${excludedCodesLabel()}) ${fmt(t.deductionsReceived)}`);
     console.log(`    Recovered                                        ${fmt(t.recovered)}`);
     console.log(`    Lost total (WO + COM WO + COM w/ Clearing Date)  ${fmt(t.writeOffTotal)}`);
-    console.log(`       of which COM write-off                        ${fmt(t.comWriteOff)}`);
+    console.log(`       of which Refused                             ${fmt(t.comWriteOff)}`);
     console.log(`       of which COM with Clearing Date               ${fmt(t.refuseToPay)}`);
-    console.log(`    Actual shortage                                  ${fmt(t.actualShortage)}`);
+    console.log(`    SHO                                              ${fmt(t.actualShortage)}`);
     console.log(`    Open in period                                   ${fmt(t.openInPeriod)}`);
     console.log(`    Unclassified                                     ${fmt(t.unclassified)}`);
     console.log(`    Excluded (offsets)                               ${fmt(t.excluded)}`);

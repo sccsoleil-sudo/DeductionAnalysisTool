@@ -223,33 +223,19 @@ export function periodTotals(
 
   const recovered = byOutcome((o) => o === 'Recovered');
   /**
-   * Lost = closed lines in this period window (by selected basis) that have a
-   * Clearing Date and RK2 in: WO | COM WO | COM (Refuse to Pay).
-   * Clearing Journal Entry alone is not enough — Clearing Date is required.
+   * Lost = closed lines (Clearing Date or Clearing Journal Entry) in this period
+   * that are Write-off (WO, no COM) or Refused (COM, COM WO, WO COM).
    */
-  const lostWithClearingDate = (outcome: string) =>
-    sum(
-      included.filter((r) => r.outcome === outcome && r.clearingDate !== null),
-    );
-  const comWriteOff = lostWithClearingDate('COM Write-Off');
-  const plainWriteOff = lostWithClearingDate('Write-Off');
-  const refuseToPay = lostWithClearingDate('Refuse to Pay');
+  const closedOutcome = (outcome: string) => sum(included.filter((r) => r.outcome === outcome));
+  const comWriteOff = closedOutcome('Refused');
+  const plainWriteOff = closedOutcome('Write-off');
+  const refuseToPay = closedOutcome('Refuse to Pay');
   const writeOffTotal = plainWriteOff + comWriteOff + refuseToPay;
-  const actualShortage = byOutcome((o) => o === 'Actual Shortage');
+  const actualShortage = byOutcome((o) => o === 'SHO');
   const openInPeriod = byOutcome((o) => o === 'Open');
   const unclassified = byOutcome((o) => o === UNCLASSIFIED);
 
-  const closedLostLikeWithoutClearingDate = sum(
-    included.filter(
-      (r) =>
-        (r.outcome === 'Refuse to Pay' ||
-          r.outcome === 'Write-Off' ||
-          r.outcome === 'COM Write-Off') &&
-        r.clearingDate === null,
-    ),
-  );
-  const closedUniverse =
-    recovered + writeOffTotal + closedLostLikeWithoutClearingDate + actualShortage;
+  const closedUniverse = recovered + writeOffTotal + actualShortage;
   const snapshot = new Date(
     year,
     filters.asOf.getMonth(),
@@ -300,7 +286,7 @@ export function claimedInPreviousYear(
   );
 }
 
-const LOST_OUTCOMES = new Set(['Write-Off', 'COM Write-Off', 'Refuse to Pay']);
+const LOST_OUTCOMES = new Set(['Write-off', 'Refused', 'Refuse to Pay']);
 
 /**
  * Of Lost in the analysis year by Clearing Date, how much was claimed
@@ -316,7 +302,7 @@ export function lostClaimedInPreviousYear(
   return sum(
     allRows.filter((row) => {
       if (row.isExcluded) return false;
-      if (!row.clearingDate) return false;
+      if (row.isOpen) return false;
       if (!LOST_OUTCOMES.has(row.outcome)) return false;
       if (!inPeriodWithBasis(row, filters, year, 'clearing')) return false;
       const booked = row.journalEntryDate;
@@ -360,7 +346,11 @@ export function byPenaltyCategory(rows: ClaimRow[]): NamedTotal[] {
   const all = rows.filter(
     (r) => !r.isExcluded && r.reasonCode === CODIFICATION.reasonCodes.penalty,
   );
-  return aggregate(all, (r) => penaltyCategoryFromRefKey2(r.refKey2), PENALTY_CATEGORY_ORDER);
+  return aggregate(
+    all,
+    (r) => penaltyCategoryFromRefKey2(r.refKey2, r.itemText),
+    PENALTY_CATEGORY_ORDER,
+  );
 }
 
 export function byCustomer(rows: ClaimRow[], limit = 5): NamedTotal[] {

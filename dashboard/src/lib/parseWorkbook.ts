@@ -1,6 +1,13 @@
 import * as XLSX from 'xlsx';
 import { CODIFICATION } from '../config/codification';
-import { classify, divisionFor, isAmazonRow, isExcludedCode, normalizeCode } from './classify';
+import {
+  classify,
+  divisionFor,
+  isAmazonRow,
+  isExcludedCode,
+  normalizeCode,
+  penaltyLookupCode,
+} from './classify';
 import type { ClaimRow, ParseResult, ParseWarning } from './types';
 
 /** A sheet must carry all of these to be treated as data rather than a pivot/scratch tab. */
@@ -79,8 +86,6 @@ export async function parseWorkbook(file: File): Promise<ParseResult> {
   const sheetsSkipped: string[] = [];
   const rows: ClaimRow[] = [];
 
-  let sawClearingStatus = false;
-  let sawClearingFallback = false;
   const seenKeys = new Map<string, number>();
   let unparseableDates = 0;
   let unknownReasonCodes = 0;
@@ -107,9 +112,6 @@ export async function parseWorkbook(file: File): Promise<ParseResult> {
     }
 
     sheetsUsed.push(sheetName);
-    const hasClearingStatus = headers.has('Clearing Status');
-    if (hasClearingStatus) sawClearingStatus = true;
-    else sawClearingFallback = true;
 
     for (const rawRow of raw) {
       const reasonCode = normalizeCode(rawRow['Reason Code']);
@@ -121,12 +123,8 @@ export async function parseWorkbook(file: File): Promise<ParseResult> {
       const clearingDate = toDate(rawRow['Clearing Date']);
       const journalEntryDate = toDate(rawRow['Journal Entry Date']);
 
-      let isOpen: boolean;
-      if (hasClearingStatus && text(rawRow['Clearing Status']) !== '') {
-        isOpen = num(rawRow['Clearing Status']) === 1;
-      } else {
-        isOpen = clearingJournalEntry === '' && clearingDate === null;
-      }
+      // Closed when either a Clearing Date or a Clearing Journal Entry is present.
+      const isOpen = clearingDate === null && clearingJournalEntry === '';
 
       if (journalEntryDate === null) unparseableDates += 1;
 
@@ -140,6 +138,11 @@ export async function parseWorkbook(file: File): Promise<ParseResult> {
       const customerName = text(rawRow['Customer Name']);
       const assignment = text(rawRow['Assignment']);
       const customerNumber = text(rawRow['Customer']);
+      const itemText = text(rawRow['Item Text']);
+      const lookupCode =
+        reasonCode === CODIFICATION.reasonCodes.penalty
+          ? penaltyLookupCode(refKey2, itemText)
+          : refKey2;
 
       let key = buildKey(rawRow);
       const seen = seenKeys.get(key);
@@ -159,7 +162,7 @@ export async function parseWorkbook(file: File): Promise<ParseResult> {
         paymentReference: text(rawRow['Payment Reference']),
         invoiceReference: text(rawRow['Reference'] ?? rawRow['Invoice Reference']),
         journalEntry: text(rawRow['Journal Entry']),
-        itemText: text(rawRow['Item Text']),
+        itemText,
         disputeReason: text(rawRow['Dispute Reason']),
         disputeStatus: normalizeCode(rawRow['Dispute Status']),
         reasonCode,
@@ -171,9 +174,9 @@ export async function parseWorkbook(file: File): Promise<ParseResult> {
         clearingDate,
         clearingJournalEntry,
         isOpen,
-        isExcluded: isExcludedCode(refKey2),
+        isExcluded: isExcludedCode(lookupCode),
         isAmazon: isAmazonRow(customerName.toUpperCase(), assignment, customerNumber),
-        outcome: classify(reasonCode, refKey2, isOpen),
+        outcome: classify(reasonCode, refKey2, isOpen, itemText),
       });
     }
   }
@@ -190,11 +193,11 @@ export async function parseWorkbook(file: File): Promise<ParseResult> {
       message: `Skipped ${sheetsSkipped.length} non-data sheet(s): ${sheetsSkipped.join('; ')}.`,
     });
   }
-  if (sawClearingFallback && !sawClearingStatus) {
+  if (rows.length > 0) {
     warnings.push({
-      level: 'warning',
+      level: 'info',
       message:
-        'No "Clearing Status" column found. Open/closed was derived from blank Clearing Date and Clearing Journal Entry instead.',
+        'Closed means a Clearing Date or a Clearing Journal Entry is present. Both blank means open.',
     });
   }
   if (unparseableDates > 0) {
@@ -225,10 +228,6 @@ export async function parseWorkbook(file: File): Promise<ParseResult> {
     sheetsUsed,
     sheetsSkipped,
     warnings,
-    openClosedSource: sawClearingStatus
-      ? 'Clearing Status'
-      : rows.length > 0
-        ? 'Clearing Date / Clearing Journal Entry'
-        : 'none',
+    openClosedSource: rows.length > 0 ? 'Clearing Date / Clearing Journal Entry' : 'none',
   };
 }

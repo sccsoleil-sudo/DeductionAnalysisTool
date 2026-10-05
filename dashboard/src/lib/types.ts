@@ -1,10 +1,9 @@
 export type Outcome =
   | 'Open'
   | 'Recovered'
-  | 'Write-Off'
-  | 'COM Write-Off'
-  | 'Refuse to Pay'
-  | 'Actual Shortage'
+  | 'Write-off'
+  | 'Refused'
+  | 'SHO'
   | 'Excluded'
   | 'Unclassified'
   | string; // R16 penalty category labels
