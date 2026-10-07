@@ -74,6 +74,17 @@ export const CODIFICATION = {
 
   /** Uploading a file whose alphanumeric name matches this becomes the baseline. */
   autoBaselineFilename: 'logisticsmasterv1',
+
+  /**
+   * Workbook in the Deduction Management SharePoint folder.
+   * A bookmark can override the name with ?sp=FileName.xlsx.
+   */
+  sharePointWorkbookFile: 'Logistics master data.xlsx',
+
+  /** Folder that holds the dashboard page and the workbook. Sharing-link query parameters are not part of this path. */
+  sharePointOrigin: 'https://loreal.sharepoint.com',
+  sharePointFolderPath:
+    '/sites/ame-canada/supplychain/Customer First/Credit Management/Deduction Management',
 } as const;
 
 export const UNCLASSIFIED = 'Unclassified';

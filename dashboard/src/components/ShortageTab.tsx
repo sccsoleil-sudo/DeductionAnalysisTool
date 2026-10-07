@@ -5,10 +5,8 @@ import {
   openArBreakdown,
   amazonPotentialShortage,
   byCustomer,
-  byDisputeStatus,
   byDivision,
-  byOpenBucket,
-  byOutcome,
+  byOutcomeAndOpen,
   claimedInPreviousYear,
   lostClaimedInPreviousYear,
   customerComparison,
@@ -106,9 +104,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     [rows, filters, lastYear],
   );
 
-  const outcomes = useMemo(() => byOutcome(cyRows), [cyRows]);
-  const openBuckets = useMemo(() => byOpenBucket(cyRows), [cyRows]);
-  const disputeStatuses = useMemo(() => byDisputeStatus(cyRows), [cyRows]);
+  const outcomeAndOpen = useMemo(() => byOutcomeAndOpen(cyRows), [cyRows]);
   const topCustomers = useMemo(
     () => customerComparison(rows, filters, currentYear, 10),
     [rows, filters, currentYear],
@@ -163,35 +159,22 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     [monthlyLy, monthlyCy, lastYear, currentYear],
   );
 
-  const outcomeChart = useMemo(
-    () =>
-      doughnutConfig(
-        outcomes.map((o) => o.name),
-        outcomes.map((o) => o.value),
-        [PALETTE.accent, PALETTE.info, PALETTE.danger, PALETTE.warn, PALETTE.slate, PALETTE.violet],
-      ),
-    [outcomes],
-  );
-
-  const openBucketChart = useMemo(
-    () =>
-      doughnutConfig(
-        openBuckets.map((o) => o.name),
-        openBuckets.map((o) => o.value),
-        [PALETTE.danger, PALETTE.accent, PALETTE.slate],
-      ),
-    [openBuckets],
-  );
-
-  const disputeChart = useMemo(
-    () =>
-      horizontalBarConfig(
-        disputeStatuses.map((d) => d.name),
-        disputeStatuses.map((d) => d.value),
-        [PALETTE.info, PALETTE.accent, PALETTE.warn, PALETTE.slate],
-      ),
-    [disputeStatuses],
-  );
+  const outcomeChart = useMemo(() => {
+    const colors: Record<string, string> = {
+      Recovered: PALETTE.accent,
+      'Write-off': PALETTE.danger,
+      Refused: PALETTE.warn,
+      SHO: PALETTE.violet,
+      'With Client': PALETTE.info,
+      'Potential Lost': PALETTE.primary,
+      Unclassified: PALETTE.slate,
+    };
+    return doughnutConfig(
+      outcomeAndOpen.map((o) => o.name),
+      outcomeAndOpen.map((o) => o.value),
+      outcomeAndOpen.map((o) => colors[o.name] ?? PALETTE.slate),
+    );
+  }, [outcomeAndOpen]);
 
   const openTopChart = useMemo(
     () =>
@@ -420,41 +403,17 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         </SectionCard>
       </div>
 
-      <div className="grid grid-3">
+      <div className="grid grid-2">
         <SectionCard
-          title={`Outcome split — ${cyLabel}`}
-          subtitle="Closed items classified by Reference Key 2."
+          title={`Outcome and open items — ${cyLabel}`}
+          subtitle="Closed items by Reference Key 2. Open items are With Client, except Reference Key 2 containing COM, which is Potential Lost."
           sectionExport={{
-            filename: xlsxName('shortage-outcome-split'),
+            filename: xlsxName('shortage-outcome-open'),
             headers: ['Outcome', 'Amount', 'Lines'],
-            rows: outcomes.map((o) => ({ Outcome: o.name, Amount: o.value, Lines: o.count })),
+            rows: outcomeAndOpen.map((o) => ({ Outcome: o.name, Amount: o.value, Lines: o.count })),
           }}
         >
-          <Chart config={outcomeChart} className="chart-box short" />
-        </SectionCard>
-
-        <SectionCard
-          title="Open item buckets"
-          subtitle="Potential lost vs recoverable vs pending analysis."
-          sectionExport={{
-            filename: xlsxName('shortage-open-buckets'),
-            headers: ['Bucket', 'Amount', 'Lines'],
-            rows: openBuckets.map((o) => ({ Bucket: o.name, Amount: o.value, Lines: o.count })),
-          }}
-        >
-          <Chart config={openBucketChart} className="chart-box short" />
-        </SectionCard>
-
-        <SectionCard
-          title="Open items by dispute status"
-          subtitle="SAP status mapped to management labels."
-          sectionExport={{
-            filename: xlsxName('shortage-dispute-status'),
-            headers: ['Status', 'Amount', 'Lines'],
-            rows: disputeStatuses.map((d) => ({ Status: d.name, Amount: d.value, Lines: d.count })),
-          }}
-        >
-          <Chart config={disputeChart} className="chart-box short" />
+          <Chart config={outcomeChart} />
         </SectionCard>
       </div>
 

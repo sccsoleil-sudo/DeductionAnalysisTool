@@ -11,6 +11,7 @@ import {
   type TabId,
 } from './lib/persistSession';
 import { isBaselineFilename, parseWorkbook } from './lib/parseWorkbook';
+import { fetchSharePointWorkbook, isSharePointPage, sharePointWorkbookName } from './lib/sharePointWorkbook';
 import type { BaselineDiff, ParseResult } from './lib/types';
 import { DataQualityTab } from './components/DataQualityTab';
 import { FileDrop } from './components/FileDrop';
@@ -37,36 +38,7 @@ export default function App() {
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingBaseline = useRef(false);
   const restoredRef = useRef(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const session = await loadSession();
-      if (cancelled || !session) {
-        setHydrating(false);
-        return;
-      }
-
-      restoredRef.current = true;
-      setParse(session.parse);
-      setFilters(session.filters);
-      setTab(session.tab);
-      setCustomBlocks(session.customBlocks);
-
-      const baseline = loadBaseline();
-      if (baseline) {
-        setBaselineName(baseline.name);
-        setDiff(diffAgainstBaseline(session.parse.rows, baseline));
-      }
-
-      setNotice(`Restored ${savedSessionLabel() ?? session.parse.fileName} from this browser.`);
-      setHydrating(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const sharePointPage = isSharePointPage();
 
   const persist = useCallback(
     async (
@@ -91,7 +63,12 @@ export default function App() {
     void persist(parse, filters, tab, customBlocks);
   }, [parse, filters, tab, customBlocks, hydrating, persist]);
 
-  const handleFile = useCallback(async (file: File, asBaseline: boolean) => {
+  const handleFile = useCallback(async (
+    file: File,
+    asBaseline: boolean,
+    source: 'upload' | 'sharepoint' = 'upload',
+    keptBlocks?: CustomPivotBlock[],
+  ) => {
     setBusy(true);
     setError(null);
     if (!restoredRef.current) setNotice(null);
@@ -116,12 +93,17 @@ export default function App() {
         setBaselineName(baselineResult.ok ? file.name : null);
         setDiff(null);
         uploadNotice = baselineResult.ok
-          ? `Baseline set from ${file.name}. Saved locally — safe to refresh this page.`
+          ? source === 'sharepoint'
+            ? `Replaced the loaded data with ${file.name} from SharePoint. Baseline set from this file.`
+            : `Baseline set from ${file.name}. Saved locally — safe to refresh this page.`
           : (baselineResult.error ?? null);
       } else {
         setDiff(diffAgainstBaseline(result.rows, existing));
         setBaselineName(existing.name);
-        uploadNotice = `Loaded ${file.name}. Saved locally — safe to refresh this page.`;
+        uploadNotice =
+          source === 'sharepoint'
+            ? `Replaced the loaded data with ${file.name} from SharePoint.`
+            : `Loaded ${file.name}. Saved locally — safe to refresh this page.`;
       }
 
       const asOf = latestJournalDate(result.rows);
@@ -138,11 +120,13 @@ export default function App() {
       setTab('shortage');
       restoredRef.current = false;
 
+      const blocks = keptBlocks ?? customBlocks;
+      if (keptBlocks) setCustomBlocks(keptBlocks);
       const stored = await saveSession({
         parse: result,
         filters: nextFilters,
         tab: 'shortage',
-        customBlocks,
+        customBlocks: blocks,
       });
       setNotice(stored.ok ? uploadNotice : (stored.error ?? uploadNotice));
     } catch (err) {
@@ -151,6 +135,71 @@ export default function App() {
       setBusy(false);
     }
   }, [customBlocks]);
+
+  const handleSharePointRefresh = useCallback(async () => {
+    const fileName = sharePointWorkbookName();
+    setBusy(true);
+    setError(null);
+    setNotice(`Reading ${fileName} from this SharePoint folder…`);
+    try {
+      const file = await fetchSharePointWorkbook(fileName);
+      await handleFile(file, false, 'sharepoint');
+    } catch (err) {
+      setNotice(null);
+      setError(err instanceof Error ? err.message : 'Could not read the SharePoint workbook.');
+      setBusy(false);
+    }
+  }, [handleFile]);
+
+  const handleFileRef = useRef(handleFile);
+  handleFileRef.current = handleFile;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restoreSavedSession() {
+      const session = await loadSession();
+      if (cancelled || !session) return;
+      restoredRef.current = true;
+      setParse(session.parse);
+      setFilters(session.filters);
+      setTab(session.tab);
+      setCustomBlocks(session.customBlocks);
+      const baseline = loadBaseline();
+      if (baseline) {
+        setBaselineName(baseline.name);
+        setDiff(diffAgainstBaseline(session.parse.rows, baseline));
+      }
+      setNotice(`Restored ${savedSessionLabel() ?? session.parse.fileName} from this browser.`);
+    }
+
+    (async () => {
+      if (isSharePointPage()) {
+        const fileName = sharePointWorkbookName();
+        setNotice(`Reading ${fileName} from this SharePoint folder…`);
+        try {
+          const file = await fetchSharePointWorkbook(fileName);
+          if (cancelled) return;
+          const session = await loadSession();
+          await handleFileRef.current(file, false, 'sharepoint', session?.customBlocks ?? []);
+        } catch (err) {
+          if (cancelled) return;
+          setError(err instanceof Error ? err.message : 'Could not read the SharePoint workbook.');
+          await restoreSavedSession();
+        } finally {
+          if (!cancelled) setHydrating(false);
+        }
+        return;
+      }
+
+      await restoreSavedSession();
+      if (!cancelled) setHydrating(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleClearSavedData() {
     await clearSession();
@@ -223,6 +272,14 @@ export default function App() {
           )}
           <button className="btn btn-primary" onClick={() => triggerUpload(false)} disabled={busy || hydrating}>
             ↑ Upload &amp; Refresh
+          </button>
+          <button
+            className="btn"
+            onClick={() => void handleSharePointRefresh()}
+            disabled={busy || hydrating}
+            title={`Replace the loaded data with ${sharePointWorkbookName()} from this SharePoint folder`}
+          >
+            Refresh from SharePoint
           </button>
           <button className="btn" onClick={() => triggerUpload(true)} disabled={busy || hydrating}>
             Set Baseline
@@ -301,8 +358,12 @@ export default function App() {
           <div className="dropzone-wrap">
             <div className="dropzone">
               <div className="spinner" />
-              <h2>Restoring your last session…</h2>
-              <p>Loading saved data from this browser.</p>
+              <h2>{sharePointPage ? 'Loading the SharePoint workbook…' : 'Restoring your last session…'}</h2>
+              <p>
+                {sharePointPage
+                  ? `Reading ${sharePointWorkbookName()} from this folder.`
+                  : 'Loading saved data from this browser.'}
+              </p>
             </div>
           </div>
         ) : !parse ? (

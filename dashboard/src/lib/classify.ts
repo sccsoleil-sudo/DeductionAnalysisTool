@@ -16,10 +16,6 @@ export function divisionFor(businessArea: string): string {
   return CODIFICATION.divisions[businessArea] ?? UNKNOWN_DIVISION;
 }
 
-export function disputeLabelFor(disputeStatus: string): string {
-  return CODIFICATION.disputeStatusLabels[disputeStatus] ?? UNCLASSIFIED;
-}
-
 export function isAmazonRow(customerName: string, assignment: string, customerNumber: string): boolean {
   if (customerName.includes(CODIFICATION.amazon.nameContains)) return true;
   return CODIFICATION.amazon.customerNumbers.some(
@@ -93,14 +89,7 @@ export function classify(
     : classifyShortage(refKey2, isOpen);
 }
 
-/** Open R02 sub-bucket used by the period summary donut. */
-export function openBucketFor(refKey2: string, disputeStatus: string): string {
-  const isPotentialLost =
-    refKey2.includes(CODIFICATION.refuseToPayPrefix) ||
-    refKey2.includes(CODIFICATION.writeOffContains);
-  if (isPotentialLost) return 'Potential Lost';
-  if ((CODIFICATION.recoverableDisputeStatuses as readonly string[]).includes(disputeStatus)) {
-    return 'Recoverable';
-  }
-  return 'Pending - In Analysis';
+/** Label used when an open shortage line is drawn on the combined outcome chart. */
+export function openChartBucket(refKey2: string): 'Potential Lost' | 'With Client' {
+  return refKey2.includes('COM') ? 'Potential Lost' : 'With Client';
 }

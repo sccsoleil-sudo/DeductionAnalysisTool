@@ -5,7 +5,7 @@ import {
   UNCLASSIFIED,
   UNKNOWN_DIVISION,
 } from '../config/codification';
-import { disputeLabelFor, openBucketFor, penaltyCategoryFromRefKey2 } from './classify';
+import { openChartBucket, penaltyCategoryFromRefKey2 } from './classify';
 import type { ClaimRow, NamedTotal, PeriodTotals } from './types';
 
 export type PeriodBasis = 'journal' | 'clearing';
@@ -367,18 +367,22 @@ export function byOutcome(rows: ClaimRow[]): NamedTotal[] {
   );
 }
 
-export function byDisputeStatus(rows: ClaimRow[]): NamedTotal[] {
-  return aggregate(
-    rows.filter((r) => !r.isExcluded && r.isOpen),
-    (r) => disputeLabelFor(r.disputeStatus),
-  );
-}
+const OUTCOME_CHART_ORDER = [
+  'Recovered',
+  'Write-off',
+  'Refused',
+  'SHO',
+  'With Client',
+  'Potential Lost',
+  UNCLASSIFIED,
+];
 
-export function byOpenBucket(rows: ClaimRow[]): NamedTotal[] {
+/** Closed outcomes plus open lines split into With Client and Potential Lost (Reference Key 2 contains COM). */
+export function byOutcomeAndOpen(rows: ClaimRow[]): NamedTotal[] {
   return aggregate(
-    rows.filter((r) => !r.isExcluded && r.isOpen),
-    (r) => openBucketFor(r.refKey2, r.disputeStatus),
-    ['Potential Lost', 'Recoverable', 'Pending - In Analysis'],
+    rows.filter((r) => !r.isExcluded),
+    (r) => (r.isOpen ? openChartBucket(r.refKey2) : r.outcome),
+    OUTCOME_CHART_ORDER,
   );
 }
 
