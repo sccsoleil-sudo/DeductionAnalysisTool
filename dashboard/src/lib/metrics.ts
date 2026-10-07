@@ -377,6 +377,24 @@ const OUTCOME_CHART_ORDER = [
   UNCLASSIFIED,
 ];
 
+/** Closed shortage lines in the period, classified by Reference Key 2. */
+export function byClosedOutcome(rows: ClaimRow[]): NamedTotal[] {
+  return aggregate(
+    rows.filter((r) => !r.isExcluded && !r.isOpen),
+    (r) => r.outcome,
+    ['Recovered', 'Write-off', 'Refused', 'SHO', UNCLASSIFIED],
+  );
+}
+
+/** Open shortage lines: Potential Lost when Reference Key 2 contains COM, otherwise With Client. */
+export function byOpenChart(rows: ClaimRow[]): NamedTotal[] {
+  return aggregate(
+    rows.filter((r) => !r.isExcluded && r.isOpen),
+    (r) => openChartBucket(r.refKey2),
+    ['With Client', 'Potential Lost'],
+  );
+}
+
 /** Closed outcomes plus open lines split into With Client and Potential Lost (Reference Key 2 contains COM). */
 export function byOutcomeAndOpen(rows: ClaimRow[]): NamedTotal[] {
   return aggregate(

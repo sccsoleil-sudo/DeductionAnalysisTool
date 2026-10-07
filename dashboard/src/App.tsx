@@ -270,37 +270,39 @@ export default function App() {
               <div>Saved in this browser</div>
             </div>
           )}
-          <button className="btn btn-primary" onClick={() => triggerUpload(false)} disabled={busy || hydrating}>
-            ↑ Upload &amp; Refresh
-          </button>
-          <button
-            className="btn"
-            onClick={() => void handleSharePointRefresh()}
-            disabled={busy || hydrating}
-            title={`Replace the loaded data with ${sharePointWorkbookName()} from this SharePoint folder`}
-          >
-            Refresh from SharePoint
-          </button>
-          <button className="btn" onClick={() => triggerUpload(true)} disabled={busy || hydrating}>
-            Set Baseline
-          </button>
-          <button
-            className="btn btn-ghost"
-            disabled={busy || !baselineName}
-            onClick={() => {
-              clearBaseline();
-              setBaselineName(null);
-              setDiff(null);
-              setNotice('Baseline cleared. The next upload becomes the new baseline.');
-            }}
-          >
-            ✕ Clear Baseline
-          </button>
-          {parse && (
-            <button className="btn btn-ghost" disabled={busy} onClick={() => void handleClearSavedData()}>
-              ✕ Clear Saved Data
+          <div className="header-buttons">
+            <button className="btn btn-primary" onClick={() => triggerUpload(false)} disabled={busy || hydrating}>
+              ↑ Upload &amp; Refresh
             </button>
-          )}
+            <button
+              className="btn"
+              onClick={() => void handleSharePointRefresh()}
+              disabled={busy || hydrating}
+              title={`Replace the loaded data with ${sharePointWorkbookName()} from this SharePoint folder`}
+            >
+              Refresh from SharePoint
+            </button>
+            <button className="btn" onClick={() => triggerUpload(true)} disabled={busy || hydrating}>
+              Set Baseline
+            </button>
+            <button
+              className="btn btn-ghost"
+              disabled={busy || !baselineName}
+              onClick={() => {
+                clearBaseline();
+                setBaselineName(null);
+                setDiff(null);
+                setNotice('Baseline cleared. The next upload becomes the new baseline.');
+              }}
+            >
+              ✕ Clear Baseline
+            </button>
+            {parse && (
+              <button className="btn btn-ghost" disabled={busy} onClick={() => void handleClearSavedData()}>
+                ✕ Clear Saved Data
+              </button>
+            )}
+          </div>
         </div>
 
         <input

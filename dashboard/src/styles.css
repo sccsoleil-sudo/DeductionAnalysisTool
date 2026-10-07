@@ -47,8 +47,9 @@ button {
   color: #fff;
   padding: 16px 28px;
   display: flex;
-  align-items: center;
-  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 20px;
   flex-wrap: wrap;
   box-shadow: var(--shadow-md);
   position: sticky;
@@ -59,6 +60,9 @@ button {
 .header-brand {
   display: flex;
   flex-direction: column;
+  flex: 1 1 220px;
+  min-width: 0;
+  padding-top: 4px;
 }
 
 .header-title {
@@ -73,18 +77,62 @@ button {
 }
 
 .header-actions {
-  margin-left: auto;
+  flex: 1 1 280px;
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 10px 14px;
   flex-wrap: wrap;
 }
 
+.header-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .header-meta {
+  flex: 1 1 160px;
+  min-width: 0;
+  max-width: 280px;
   font-size: 0.74rem;
   opacity: 0.75;
   text-align: right;
   line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1480px) {
+  .header-brand,
+  .header-actions {
+    flex-basis: 100%;
+  }
+
+  .header-actions,
+  .header-buttons {
+    justify-content: flex-start;
+  }
+
+  .header-meta {
+    max-width: none;
+    text-align: left;
+  }
+}
+
+@media (max-width: 720px) {
+  .header {
+    padding: 12px 14px;
+  }
+
+  .header .btn {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+  }
 }
 
 .btn {

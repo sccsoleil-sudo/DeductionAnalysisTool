@@ -5,7 +5,9 @@ import {
   openArBreakdown,
   amazonPotentialShortage,
   byCustomer,
+  byClosedOutcome,
   byDivision,
+  byOpenChart,
   byOutcomeAndOpen,
   claimedInPreviousYear,
   lostClaimedInPreviousYear,
@@ -104,6 +106,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     [rows, filters, lastYear],
   );
 
+  const closedOutcomes = useMemo(() => byClosedOutcome(cyRows), [cyRows]);
+  const openItems = useMemo(() => byOpenChart(cyRows), [cyRows]);
   const outcomeAndOpen = useMemo(() => byOutcomeAndOpen(cyRows), [cyRows]);
   const topCustomers = useMemo(
     () => customerComparison(rows, filters, currentYear, 10),
@@ -159,22 +163,26 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     [monthlyLy, monthlyCy, lastYear, currentYear],
   );
 
-  const outcomeChart = useMemo(() => {
-    const colors: Record<string, string> = {
-      Recovered: PALETTE.accent,
-      'Write-off': PALETTE.danger,
-      Refused: PALETTE.warn,
-      SHO: PALETTE.violet,
-      'With Client': PALETTE.info,
-      'Potential Lost': PALETTE.primary,
-      Unclassified: PALETTE.slate,
-    };
-    return doughnutConfig(
-      outcomeAndOpen.map((o) => o.name),
-      outcomeAndOpen.map((o) => o.value),
-      outcomeAndOpen.map((o) => colors[o.name] ?? PALETTE.slate),
+  const sliceColors: Record<string, string> = {
+    Recovered: PALETTE.accent,
+    'Write-off': PALETTE.danger,
+    Refused: PALETTE.warn,
+    SHO: PALETTE.violet,
+    Open: PALETTE.info,
+    'With Client': PALETTE.info,
+    'Potential Lost': PALETTE.primary,
+    Unclassified: PALETTE.slate,
+  };
+  const doughnutFor = (slices: { name: string; value: number }[]) =>
+    doughnutConfig(
+      slices.map((o) => o.name),
+      slices.map((o) => o.value),
+      slices.map((o) => sliceColors[o.name] ?? PALETTE.slate),
     );
-  }, [outcomeAndOpen]);
+
+  const outcomeChart = useMemo(() => doughnutFor(closedOutcomes), [closedOutcomes]);
+  const openItemChart = useMemo(() => doughnutFor(openItems), [openItems]);
+  const ytdChart = useMemo(() => doughnutFor(outcomeAndOpen), [outcomeAndOpen]);
 
   const openTopChart = useMemo(
     () =>
@@ -403,17 +411,41 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         </SectionCard>
       </div>
 
-      <div className="grid grid-2">
+      <div className="grid grid-3">
         <SectionCard
-          title={`Outcome and open items — ${cyLabel}`}
-          subtitle="Closed items by Reference Key 2. Open items are With Client, except Reference Key 2 containing COM, which is Potential Lost."
+          title={`Outcome split — ${cyLabel}`}
+          subtitle="Closed items classified by Reference Key 2."
           sectionExport={{
-            filename: xlsxName('shortage-outcome-open'),
+            filename: xlsxName('shortage-outcome-split'),
+            headers: ['Outcome', 'Amount', 'Lines'],
+            rows: closedOutcomes.map((o) => ({ Outcome: o.name, Amount: o.value, Lines: o.count })),
+          }}
+        >
+          <Chart config={outcomeChart} className="chart-box short" />
+        </SectionCard>
+
+        <SectionCard
+          title="Open items"
+          subtitle="With Client, and Potential Lost when Reference Key 2 contains COM."
+          sectionExport={{
+            filename: xlsxName('shortage-open-items'),
+            headers: ['Bucket', 'Amount', 'Lines'],
+            rows: openItems.map((o) => ({ Bucket: o.name, Amount: o.value, Lines: o.count })),
+          }}
+        >
+          <Chart config={openItemChart} className="chart-box short" />
+        </SectionCard>
+
+        <SectionCard
+          title={`YTD overview — ${cyLabel}`}
+          subtitle="Closed outcomes plus open With Client and Potential Lost."
+          sectionExport={{
+            filename: xlsxName('shortage-ytd-overview'),
             headers: ['Outcome', 'Amount', 'Lines'],
             rows: outcomeAndOpen.map((o) => ({ Outcome: o.name, Amount: o.value, Lines: o.count })),
           }}
         >
-          <Chart config={outcomeChart} />
+          <Chart config={ytdChart} className="chart-box short" />
         </SectionCard>
       </div>
 
