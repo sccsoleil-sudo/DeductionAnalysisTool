@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PivotTableUI from 'react-pivottable/PivotTableUI';
 import 'react-pivottable/pivottable.css';
 import {
@@ -21,6 +21,27 @@ import { count } from '../lib/format';
 import type { Filters } from '../lib/metrics';
 import type { ClaimRow } from '../lib/types';
 
+const MAX_CHART_SERIES = 60;
+const MAX_CHART_CATEGORIES = 1500;
+
+/** Count distinct row groups and column groups so a huge chart is never drawn by surprise. */
+function estimateChartSize(
+  data: (string | number)[][],
+  pivot: CustomPivotBlock['pivot'],
+): { categories: number; series: number } {
+  const header = data[0] as string[];
+  const countDistinct = (fields: string[]) => {
+    const indexes = fields.map((f) => header.indexOf(f)).filter((i) => i >= 0);
+    if (indexes.length === 0) return 1;
+    const seen = new Set<string>();
+    for (let r = 1; r < data.length; r += 1) {
+      seen.add(indexes.map((i) => data[r][i]).join('\u0001'));
+    }
+    return seen.size;
+  };
+  return { categories: countDistinct(pivot.rows), series: countDistinct(pivot.cols) };
+}
+
 interface PivotBlockProps {
   block: CustomPivotBlock;
   rows: ClaimRow[];
@@ -39,16 +60,28 @@ export function PivotBlock({ block, rows, filters, onChange, onDelete }: PivotBl
     [block.title, filters],
   );
 
-  const segments = useMemo(
-    () => getColorableSegments(data, block.pivot),
-    [data, block.pivot],
+  const requestedChart = isPlotlyRenderer(block.pivot.rendererName);
+  const [drawAnyway, setDrawAnyway] = useState(false);
+  const chartSize = useMemo(
+    () => (requestedChart ? estimateChartSize(data, block.pivot) : null),
+    [requestedChart, data, block.pivot],
   );
+  const tooHeavy =
+    requestedChart &&
+    !drawAnyway &&
+    chartSize !== null &&
+    (chartSize.series > MAX_CHART_SERIES || chartSize.categories > MAX_CHART_CATEGORIES);
+  const chartActive = requestedChart && !tooHeavy;
 
-  const chartActive = isPlotlyRenderer(block.pivot.rendererName);
+  const segments = useMemo(
+    () => (chartActive ? getColorableSegments(data, block.pivot) : []),
+    [chartActive, data, block.pivot],
+  );
 
   const pivotProps = useMemo(
     () => ({
       ...block.pivot,
+      rendererName: tooHeavy ? 'Table' : block.pivot.rendererName,
       data,
       renderers: PIVOT_RENDERERS,
       onRendererUpdate: (
@@ -60,7 +93,7 @@ export function PivotBlock({ block, rows, filters, onChange, onDelete }: PivotBl
         applySegmentColors(graphDiv, figure, block.segmentColors);
       },
     }),
-    [block.pivot, block.segmentColors, data],
+    [block.pivot, block.segmentColors, data, tooHeavy],
   );
 
   useEffect(() => {
@@ -172,15 +205,26 @@ export function PivotBlock({ block, rows, filters, onChange, onDelete }: PivotBl
         </div>
       )}
 
+      {tooHeavy && chartSize && (
+        <div className="note warn">
+          This chart would draw about {count(chartSize.categories)} categories across{' '}
+          {count(chartSize.series)} series, which can freeze the browser. The table is shown instead.
+          Use a coarser field such as Claim Month, or{' '}
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDrawAnyway(true)}>
+            draw the chart anyway
+          </button>
+          .
+        </div>
+      )}
+
       <div className="pivot-wrap">
         <PivotTableUI
           {...pivotProps}
-          onChange={(next: Record<string, unknown>) =>
-            onChange({
-              ...block,
-              pivot: pivotConfigFromUiState(next),
-            })
-          }
+          onChange={(next: Record<string, unknown>) => {
+            const stored = pivotConfigFromUiState(next);
+            if (tooHeavy && stored.rendererName === 'Table') stored.rendererName = block.pivot.rendererName;
+            onChange({ ...block, pivot: stored });
+          }}
         />
       </div>
     </div>

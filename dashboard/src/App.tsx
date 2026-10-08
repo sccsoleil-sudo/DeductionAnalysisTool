@@ -177,7 +177,8 @@ export default function App() {
       restoredRef.current = true;
       setParse(session.parse);
       setFilters(session.filters);
-      setTab(session.tab);
+      // Always reopen on Shortage so a heavy saved Explore chart never draws before you ask for it.
+      setTab('shortage');
       setCustomBlocks(session.customBlocks);
       setNotice(`Restored ${savedSessionLabel() ?? session.parse.fileName} from this browser.`);
       const baseline = loadBaseline();
