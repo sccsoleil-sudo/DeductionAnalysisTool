@@ -20,6 +20,8 @@ import {
 } from '../lib/metrics';
 import type { ClaimRow } from '../lib/types';
 import { Chart, PALETTE, comparisonConfig, doughnutConfig, monthlyConfig } from './Chart';
+import { buildEmailSummary } from '../lib/emailSummary';
+import { EmailMetricsButton } from './EmailMetricsButton';
 import { KpiCard } from './KpiCard';
 import { CustomerTable } from './CustomerTable';
 import { SectionCard } from './SectionCard';
@@ -157,6 +159,32 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
     ],
   };
 
+  const emailSummary = buildEmailSummary({
+    title: 'Penalties & Fines (R16)',
+    lyLabel,
+    cyLabel,
+    rangeLabel,
+    cutOff: longDate(asOf),
+    metrics: [
+      {
+        label: 'Total',
+        current: categoryTotalCy,
+        previous: categoryTotalLy,
+        lines: categoryTotalCountCy,
+      },
+      ...kpiCategories.map((cat) => {
+        const cyVal = catCyMap.get(cat.label)?.value ?? 0;
+        return {
+          label: cat.label,
+          current: cyVal,
+          previous: catLyMap.get(cat.label) ?? 0,
+          lines: catCyMap.get(cat.label)?.count ?? 0,
+          share: categoryTotalCy === 0 ? 0 : (cyVal / categoryTotalCy) * 100,
+        };
+      }),
+    ],
+  });
+
   if (rows.length === 0) {
     return <div className="empty">No R16 penalty rows match the current filters.</div>;
   }
@@ -167,6 +195,12 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
         title="Key metrics"
         subtitle={`${lyLabel} vs ${cyLabel} · open + closed · ${rangeLabel}, cut off at ${longDate(asOf)}`}
         sectionExport={kpiExport}
+        actions={
+          <EmailMetricsButton
+            summary={emailSummary}
+            recipients={CODIFICATION.penaltyEmailRecipients}
+          />
+        }
       >
         <div className="grid grid-6 kpi-grid">
           <KpiCard

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { excludedCodesLabel } from '../config/codification';
+import { CODIFICATION, excludedCodesLabel } from '../config/codification';
 import { compactMoney, longDate, money, percent, count } from '../lib/format';
 import {
   openArBreakdown,
@@ -30,6 +30,8 @@ import {
   monthlyConfig,
   stackedBarConfig,
 } from './Chart';
+import { buildEmailSummary } from '../lib/emailSummary';
+import { EmailMetricsButton } from './EmailMetricsButton';
 import { KpiCard } from './KpiCard';
 import { CustomerTable } from './CustomerTable';
 import { SectionCard } from './SectionCard';
@@ -240,6 +242,36 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     ],
   };
 
+  const emailSummary = buildEmailSummary({
+    title: 'Shortage Claims (R02)',
+    lyLabel,
+    cyLabel,
+    rangeLabel,
+    cutOff: longDate(asOf),
+    metrics: [
+      { label: 'Open AR balance', current: cy.openArBalance, previous: ly.openArBalance },
+      {
+        label: 'Deductions received',
+        current: cy.deductionsReceived,
+        previous: ly.deductionsReceived,
+        lines: cy.rowCount,
+      },
+      {
+        label: 'Recovered',
+        current: cy.recovered,
+        previous: ly.recovered,
+        detail: `Recovery rate ${percent(cy.recoveryRate)} (${lyLabel}: ${percent(ly.recoveryRate)})`,
+      },
+      {
+        label: 'Lost',
+        current: cyPl.writeOffTotal,
+        previous: lyPl.writeOffTotal,
+        detail: `Refused ${compactMoney(cyPl.comWriteOff)}; gross ${compactMoney(cyPl.writeOffGross)} less credit written off ${compactMoney(cyPl.writeOffCredit)}`,
+      },
+      { label: 'SHO', current: cy.actualShortage, previous: ly.actualShortage },
+    ],
+  });
+
   if (rows.length === 0) {
     return <div className="empty">No R02 shortage rows match the current filters.</div>;
   }
@@ -250,6 +282,12 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
         title="Key metrics"
         subtitle={`${lyLabel} vs ${cyLabel} · ${rangeLabel}, cut off at ${longDate(asOf)}`}
         sectionExport={kpiExport}
+        actions={
+          <EmailMetricsButton
+            summary={emailSummary}
+            recipients={CODIFICATION.shortageEmailRecipients}
+          />
+        }
       >
         <div className="grid grid-5 kpi-grid">
           <KpiCard

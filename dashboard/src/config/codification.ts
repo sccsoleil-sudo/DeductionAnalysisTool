@@ -87,6 +87,15 @@ export const CODIFICATION = {
    */
   sharePointAutoLoad: false,
 
+  /**
+   * Default recipients for the penalty key metrics email, e.g. ['name@loreal.com'].
+   * Leave empty to choose recipients in the email window.
+   */
+  penaltyEmailRecipients: [] as string[],
+
+  /** Default recipients for the shortage key metrics email. Leave empty to choose in the email window. */
+  shortageEmailRecipients: [] as string[],
+
   /** Folder that holds the dashboard page and the workbook. Sharing-link query parameters are not part of this path. */
   sharePointOrigin: 'https://loreal.sharepoint.com',
   sharePointFolderPath:

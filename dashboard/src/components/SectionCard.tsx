@@ -5,6 +5,8 @@ interface SectionCardProps {
   title: string;
   subtitle?: string;
   sectionExport?: SectionExport;
+  /** Extra buttons shown next to the Excel download. */
+  actions?: ReactNode;
   className?: string;
   children: ReactNode;
 }
@@ -13,6 +15,7 @@ export function SectionCard({
   title,
   subtitle,
   sectionExport,
+  actions,
   className = 'card',
   children,
 }: SectionCardProps) {
@@ -23,7 +26,12 @@ export function SectionCard({
           <div className="card-title">{title}</div>
           {subtitle && <div className="card-sub">{subtitle}</div>}
         </div>
-        {sectionExport && <DownloadExcelButton sectionExport={sectionExport} />}
+        {(sectionExport || actions) && (
+          <div className="card-header-actions">
+            {actions}
+            {sectionExport && <DownloadExcelButton sectionExport={sectionExport} />}
+          </div>
+        )}
       </div>
       {children}
     </div>
