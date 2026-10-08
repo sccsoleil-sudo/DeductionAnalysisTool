@@ -30,6 +30,25 @@ function snapshotOf(rows: ClaimRow[]): Record<string, string> {
   return out;
 }
 
+/** Hash in small slices so a 40,000-row file does not freeze the page. */
+export function snapshotRows(rows: ClaimRow[]): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  const size = 4000;
+  let index = 0;
+  return new Promise((resolve) => {
+    const step = () => {
+      const end = Math.min(index + size, rows.length);
+      for (; index < end; index += 1) {
+        const row = rows[index];
+        out[hashKey(row.key)] = fingerprint(row);
+      }
+      if (index < rows.length) setTimeout(step, 0);
+      else resolve(out);
+    };
+    step();
+  });
+}
+
 export function loadBaseline(): StoredBaseline | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -65,8 +84,7 @@ export function clearBaseline(): void {
   }
 }
 
-export function diffAgainstBaseline(rows: ClaimRow[], baseline: StoredBaseline): BaselineDiff {
-  const current = snapshotOf(rows);
+function diffFromSnapshot(current: Record<string, string>, baseline: StoredBaseline): BaselineDiff {
   let added = 0;
   let updated = 0;
 
@@ -88,4 +106,36 @@ export function diffAgainstBaseline(rows: ClaimRow[], baseline: StoredBaseline):
     baselineName: baseline.name,
     baselineDate: baseline.savedAt.slice(0, 10),
   };
+}
+
+export function diffAgainstBaseline(rows: ClaimRow[], baseline: StoredBaseline): BaselineDiff {
+  return diffFromSnapshot(snapshotOf(rows), baseline);
+}
+
+export async function diffAgainstBaselineIdle(
+  rows: ClaimRow[],
+  baseline: StoredBaseline,
+): Promise<BaselineDiff> {
+  return diffFromSnapshot(await snapshotRows(rows), baseline);
+}
+
+export async function saveBaselineIdle(
+  name: string,
+  rows: ClaimRow[],
+): Promise<{ ok: boolean; error?: string }> {
+  const payload: StoredBaseline = {
+    name,
+    savedAt: new Date().toISOString(),
+    rows: await snapshotRows(rows),
+  };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      error:
+        'Baseline is too large for browser storage. The dashboard still works; only new/updated/removed counters are unavailable.',
+    };
+  }
 }

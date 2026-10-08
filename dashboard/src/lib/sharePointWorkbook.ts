@@ -100,6 +100,7 @@ async function readBytes(url: string): Promise<ArrayBuffer | null> {
   const response = await fetch(url, {
     credentials: 'include',
     cache: 'no-store',
+    signal: AbortSignal.timeout(45_000),
     headers: {
       Accept: 'application/octet-stream',
     },

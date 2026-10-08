@@ -1,6 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CODIFICATION } from './config/codification';
-import { clearBaseline, diffAgainstBaseline, loadBaseline, saveBaseline } from './lib/baseline';
+import {
+  clearBaseline,
+  diffAgainstBaselineIdle,
+  loadBaseline,
+  saveBaselineIdle,
+} from './lib/baseline';
 import { count, longDate } from './lib/format';
 import { applyFilters, defaultMonths, distinctValues, latestJournalDate, periodRangeLabel, type Filters } from './lib/metrics';
 import {
@@ -39,6 +44,7 @@ export default function App() {
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingBaseline = useRef(false);
   const restoredRef = useRef(false);
+  const skipPersist = useRef(false);
   const sharePointPage = isSharePointPage();
 
   const persist = useCallback(
@@ -61,6 +67,10 @@ export default function App() {
 
   useEffect(() => {
     if (!parse || !filters || hydrating) return;
+    if (skipPersist.current) {
+      skipPersist.current = false;
+      return;
+    }
     void persist(parse, filters, tab, customBlocks);
   }, [parse, filters, tab, customBlocks, hydrating, persist]);
 
@@ -85,28 +95,6 @@ export default function App() {
         return;
       }
 
-      const treatAsBaseline = asBaseline || isBaselineFilename(file.name);
-      const existing = loadBaseline();
-      let uploadNotice: string | null = null;
-
-      if (treatAsBaseline || !existing) {
-        const baselineResult = saveBaseline(file.name, result.rows);
-        setBaselineName(baselineResult.ok ? file.name : null);
-        setDiff(null);
-        uploadNotice = baselineResult.ok
-          ? source === 'sharepoint'
-            ? `Replaced the loaded data with ${file.name} from SharePoint. Baseline set from this file.`
-            : `Baseline set from ${file.name}. Saved locally — safe to refresh this page.`
-          : (baselineResult.error ?? null);
-      } else {
-        setDiff(diffAgainstBaseline(result.rows, existing));
-        setBaselineName(existing.name);
-        uploadNotice =
-          source === 'sharepoint'
-            ? `Replaced the loaded data with ${file.name} from SharePoint.`
-            : `Loaded ${file.name}. Saved locally — safe to refresh this page.`;
-      }
-
       const asOf = latestJournalDate(result.rows);
       const nextFilters: Filters = {
         divisions: [],
@@ -116,20 +104,45 @@ export default function App() {
         asOf,
         months: defaultMonths(asOf),
       };
+      const blocks = keptBlocks ?? customBlocks;
+      const uploadNotice =
+        source === 'sharepoint'
+          ? `Replaced the loaded data with ${file.name} from SharePoint.`
+          : `Loaded ${file.name}.`;
+      skipPersist.current = true;
+      restoredRef.current = false;
+      if (keptBlocks) setCustomBlocks(keptBlocks);
       setParse(result);
       setFilters(nextFilters);
       setTab('shortage');
-      restoredRef.current = false;
+      setNotice(uploadNotice);
+      setBusy(false);
 
-      const blocks = keptBlocks ?? customBlocks;
-      if (keptBlocks) setCustomBlocks(keptBlocks);
-      const stored = await saveSession({
-        parse: result,
-        filters: nextFilters,
-        tab: 'shortage',
-        customBlocks: blocks,
-      });
-      setNotice(stored.ok ? uploadNotice : (stored.error ?? uploadNotice));
+      const treatAsBaseline = asBaseline || isBaselineFilename(file.name);
+      void (async () => {
+        try {
+          const existing = loadBaseline();
+          if (treatAsBaseline || !existing) {
+            const baselineResult = await saveBaselineIdle(file.name, result.rows);
+            setBaselineName(baselineResult.ok ? file.name : null);
+            setDiff(null);
+            if (!baselineResult.ok && baselineResult.error) setNotice(baselineResult.error);
+          } else {
+            setBaselineName(existing.name);
+            setDiff(await diffAgainstBaselineIdle(result.rows, existing));
+          }
+          const stored = await saveSession({
+            parse: result,
+            filters: nextFilters,
+            tab: 'shortage',
+            customBlocks: blocks,
+          });
+          if (!stored.ok && stored.error) setNotice(stored.error);
+        } catch (err) {
+          setNotice(err instanceof Error ? err.message : 'The file is loaded. Saving a local copy did not finish.');
+        }
+      })();
+      return;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not read that workbook.');
     } finally {
@@ -166,12 +179,15 @@ export default function App() {
       setFilters(session.filters);
       setTab(session.tab);
       setCustomBlocks(session.customBlocks);
+      setNotice(`Restored ${savedSessionLabel() ?? session.parse.fileName} from this browser.`);
       const baseline = loadBaseline();
       if (baseline) {
         setBaselineName(baseline.name);
-        setDiff(diffAgainstBaseline(session.parse.rows, baseline));
+        const savedRows = session.parse.rows;
+        void diffAgainstBaselineIdle(savedRows, baseline).then((next) => {
+          if (!cancelled) setDiff(next);
+        });
       }
-      setNotice(`Restored ${savedSessionLabel() ?? session.parse.fileName} from this browser.`);
     }
 
     (async () => {
