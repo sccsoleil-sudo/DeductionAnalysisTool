@@ -45,7 +45,7 @@ export default function App() {
   const pendingBaseline = useRef(false);
   const restoredRef = useRef(false);
   const skipPersist = useRef(false);
-  const sharePointPage = isSharePointPage();
+  const sharePointPage = CODIFICATION.sharePointAutoLoad && isSharePointPage();
 
   const persist = useCallback(
     async (
@@ -192,7 +192,7 @@ export default function App() {
     }
 
     (async () => {
-      if (isSharePointPage()) {
+      if (CODIFICATION.sharePointAutoLoad && isSharePointPage()) {
         const fileName = sharePointWorkbookName();
         setNotice(`Reading ${fileName} from this SharePoint folder…`);
         try {

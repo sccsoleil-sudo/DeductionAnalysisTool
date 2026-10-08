@@ -40,9 +40,9 @@ export function FileDrop({ onFile, busy }: FileDropProps) {
             <h2>Upload your Logistics Master file</h2>
             <p>
               Drag an <strong>.xlsx</strong> or <strong>.xls</strong> file here, or choose one below. Nothing
-              is uploaded — the file is read entirely inside your browser. Opened from SharePoint, this
-              page loads <code>{sharePointWorkbookName()}</code> from the same folder. Refresh from
-              SharePoint, in the header, loads that file again.
+              is uploaded — the file is read entirely inside your browser. When this page is opened from
+              SharePoint, Refresh from SharePoint in the header loads{' '}
+              <code>{sharePointWorkbookName()}</code> from the same folder.
             </p>
             <button className="btn" onClick={() => inputRef.current?.click()}>
               Choose file

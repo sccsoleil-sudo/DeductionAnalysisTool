@@ -221,21 +221,32 @@ export function periodTotals(
   const byOutcome = (test: (o: string) => boolean) =>
     sum(included.filter((r) => test(r.outcome)));
 
-  const recovered = byOutcome((o) => o === 'Recovered');
+  // Recovered counts the deduction lines only. Payment and credit lines (negative amounts) are
+  // the client's payback, so counting them again would double count the same money.
+  const recovered = sum(
+    included.filter((r) => r.outcome === 'Recovered' && r.amount > 0),
+  );
   /**
    * Lost = closed lines (Clearing Date or Clearing Journal Entry) in this period
-   * that are Write-off (WO, no COM) or Refused (COM, COM WO, WO COM).
+   * that are Write-off (WO, no COM) or Refused (COM, COM WO, WO COM), net of the credit
+   * written off at the same time (negative lines), which offsets the loss.
    */
   const closedOutcome = (outcome: string) => sum(included.filter((r) => r.outcome === outcome));
   const comWriteOff = closedOutcome('Refused');
   const plainWriteOff = closedOutcome('Write-off');
   const refuseToPay = closedOutcome('Refuse to Pay');
   const writeOffTotal = plainWriteOff + comWriteOff + refuseToPay;
+  const lostLines = included.filter((r) =>
+    r.outcome === 'Write-off' || r.outcome === 'Refused' || r.outcome === 'Refuse to Pay',
+  );
+  const writeOffGross = sum(lostLines.filter((r) => r.amount > 0));
+  const writeOffCredit = -sum(lostLines.filter((r) => r.amount < 0));
   const actualShortage = byOutcome((o) => o === 'SHO');
   const openInPeriod = byOutcome((o) => o === 'Open');
   const unclassified = byOutcome((o) => o === UNCLASSIFIED);
 
   const closedUniverse = recovered + writeOffTotal + actualShortage;
+  const positiveIncluded = included.filter((r) => r.amount > 0);
   const snapshot = new Date(
     year,
     filters.asOf.getMonth(),
@@ -247,10 +258,12 @@ export function periodTotals(
   );
 
   return {
-    /** Non-excluded amounts — PMT and *XX* codes held out (negatives included). */
-    deductionsReceived: sum(included),
+    /** Positive (deduction) amounts only — PMT and *XX* codes held out, credits not netted. */
+    deductionsReceived: sum(positiveIncluded),
     recovered,
     writeOffTotal,
+    writeOffGross,
+    writeOffCredit,
     comWriteOff,
     plainWriteOff,
     refuseToPay,
@@ -260,7 +273,7 @@ export function periodTotals(
     excluded: sum(windowRows.filter((r) => r.isExcluded)),
     recoveryRate: closedUniverse === 0 ? 0 : (recovered / closedUniverse) * 100,
     openArBalance: openArBalance(allRows, snapshot),
-    rowCount: included.length,
+    rowCount: positiveIncluded.length,
   };
 }
 
@@ -360,9 +373,15 @@ export function byCustomer(rows: ClaimRow[], limit = 5): NamedTotal[] {
   ).slice(0, limit);
 }
 
+/** Recovered counts deductions only; the client's payback credit lines are not counted again. */
+function countsInOutcomeTotals(r: ClaimRow): boolean {
+  if (r.isExcluded) return false;
+  return !(r.outcome === 'Recovered' && r.amount < 0);
+}
+
 export function byOutcome(rows: ClaimRow[]): NamedTotal[] {
   return aggregate(
-    rows.filter((r) => !r.isExcluded),
+    rows.filter(countsInOutcomeTotals),
     (r) => r.outcome,
   );
 }
@@ -380,7 +399,7 @@ const OUTCOME_CHART_ORDER = [
 /** Closed shortage lines in the period, classified by Reference Key 2. */
 export function byClosedOutcome(rows: ClaimRow[]): NamedTotal[] {
   return aggregate(
-    rows.filter((r) => !r.isExcluded && !r.isOpen),
+    rows.filter((r) => countsInOutcomeTotals(r) && !r.isOpen),
     (r) => r.outcome,
     ['Recovered', 'Write-off', 'Refused', 'SHO', UNCLASSIFIED],
   );
@@ -398,17 +417,23 @@ export function byOpenChart(rows: ClaimRow[]): NamedTotal[] {
 /** Closed outcomes plus open lines split into With Client and Potential Lost (Reference Key 2 contains COM). */
 export function byOutcomeAndOpen(rows: ClaimRow[]): NamedTotal[] {
   return aggregate(
-    rows.filter((r) => !r.isExcluded),
+    rows.filter(countsInOutcomeTotals),
     (r) => (r.isOpen ? openChartBucket(r.refKey2) : r.outcome),
     OUTCOME_CHART_ORDER,
   );
 }
 
 /** Monthly deduction totals for the given year, indexed Jan..Dec. Unselected months are zero. */
-export function monthlySeries(rows: ClaimRow[], year: number, filters: Filters): number[] {
+export function monthlySeries(
+  rows: ClaimRow[],
+  year: number,
+  filters: Filters,
+  positiveOnly = false,
+): number[] {
   const months = new Array(12).fill(0);
   for (const row of rows) {
     if (row.isExcluded) continue;
+    if (positiveOnly && row.amount < 0) continue;
     const d = dateFor(row, filters.basis);
     if (!d || d.getFullYear() !== year) continue;
     if (!filters.months.includes(d.getMonth())) continue;
@@ -429,12 +454,14 @@ export function customerComparison(
   filters: Filters,
   currentYear: number,
   limit = 8,
+  positiveOnly = false,
 ): CustomerComparison[] {
   const current = new Map<string, number>();
   const previous = new Map<string, number>();
 
   for (const row of rows) {
     if (row.isExcluded) continue;
+    if (positiveOnly && row.amount < 0) continue;
     if (inPeriod(row, filters, currentYear)) {
       current.set(row.customerName, (current.get(row.customerName) ?? 0) + row.amount);
     } else if (inPeriod(row, filters, currentYear - 1)) {

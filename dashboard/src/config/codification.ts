@@ -81,6 +81,12 @@ export const CODIFICATION = {
    */
   sharePointWorkbookFile: 'Logistics master data.xlsx',
 
+  /**
+   * When true, a copy of the dashboard opened from SharePoint reads the workbook by itself.
+   * Off by default: the workbook is only read from SharePoint when you click "Refresh from SharePoint".
+   */
+  sharePointAutoLoad: false,
+
   /** Folder that holds the dashboard page and the workbook. Sharing-link query parameters are not part of this path. */
   sharePointOrigin: 'https://loreal.sharepoint.com',
   sharePointFolderPath:

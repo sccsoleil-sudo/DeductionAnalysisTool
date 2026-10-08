@@ -52,6 +52,10 @@ export interface PeriodTotals {
   deductionsReceived: number;
   recovered: number;
   writeOffTotal: number;
+  /** Written-off deductions before the credit written off at the same time. */
+  writeOffGross: number;
+  /** Credit written off at the same time, shown as a positive amount. It offsets the loss. */
+  writeOffCredit: number;
   /** Cleared COM WO codes. */
   comWriteOff: number;
   /** Cleared codes containing WO but not COM-prefixed. */

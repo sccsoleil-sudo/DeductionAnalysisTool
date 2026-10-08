@@ -165,7 +165,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
     <>
       <SectionCard
         title="Key metrics"
-        subtitle={`${lyLabel} vs ${cyLabel} · by Ref Key 2 (open + closed) · ${rangeLabel}, cut off at ${longDate(asOf)}`}
+        subtitle={`${lyLabel} vs ${cyLabel} · open + closed · ${rangeLabel}, cut off at ${longDate(asOf)}`}
         sectionExport={kpiExport}
       >
         <div className="grid grid-6 kpi-grid">
@@ -190,7 +190,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
                 tone={CATEGORY_TONES[index % CATEGORY_TONES.length]}
                 current={cyVal}
                 previous={lyVal}
-                footnote={`${count(cyCat?.count ?? 0)} lines · ${percent(share)} of total · code ${cat.code}`}
+                footnote={`${count(cyCat?.count ?? 0)} lines · ${percent(share)} of total`}
               />
             );
           })}

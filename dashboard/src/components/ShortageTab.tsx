@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CODIFICATION, excludedCodesLabel } from '../config/codification';
+import { excludedCodesLabel } from '../config/codification';
 import { compactMoney, longDate, money, percent, count } from '../lib/format';
 import {
   openArBreakdown,
@@ -110,7 +110,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
   const openItems = useMemo(() => byOpenChart(cyRows), [cyRows]);
   const outcomeAndOpen = useMemo(() => byOutcomeAndOpen(cyRows), [cyRows]);
   const topCustomers = useMemo(
-    () => customerComparison(rows, filters, currentYear, 10),
+    () => customerComparison(rows, filters, currentYear, 10, true),
     [rows, filters, currentYear],
   );
   const topOpen = useMemo(
@@ -118,8 +118,8 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     [cyRows],
   );
 
-  const monthlyLy = useMemo(() => monthlySeries(rows, lastYear, filters), [rows, lastYear, filters]);
-  const monthlyCy = useMemo(() => monthlySeries(rows, currentYear, filters), [rows, currentYear, filters]);
+  const monthlyLy = useMemo(() => monthlySeries(rows, lastYear, filters, true), [rows, lastYear, filters]);
+  const monthlyCy = useMemo(() => monthlySeries(rows, currentYear, filters, true), [rows, currentYear, filters]);
 
   const headlineConfig = useMemo(
     () =>
@@ -273,7 +273,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
             tone="primary"
             current={cy.deductionsReceived}
             previous={ly.deductionsReceived}
-            footnote={`${count(cy.rowCount)} lines · excludes ${excludedCodesLabel()}`}
+            footnote={`${count(cy.rowCount)} deduction lines`}
           />
           <KpiCard
             label="Recovered"
@@ -292,6 +292,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
             previous={lyPl.writeOffTotal}
             footnote={[
               `${basisLabel(filters.plBasis)} · Refused ${money(cyPl.comWriteOff)}`,
+              `Gross ${money(cyPl.writeOffGross)} − credit written off ${money(cyPl.writeOffCredit)}`,
               ...(filters.plBasis === 'clearing'
                 ? [
                     `+ ${money(lostPriorYearClaimed)} claimed in previous year (${lastYear}, Claim Date)`,
@@ -305,7 +306,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
             tone="warn"
             current={cy.actualShortage}
             previous={ly.actualShortage}
-            footnote={`${basisLabel(filters.basis)} · Ref Key 2 = ${CODIFICATION.actualShortageCode}`}
+            footnote={basisLabel(filters.basis)}
           />
         </div>
         {filters.basis === 'clearing' && priorYearClaimed > 0 && (
