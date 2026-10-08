@@ -361,7 +361,7 @@
   </table>
 
   <div class="callout">
-    <strong>Open items:</strong> If a row is open (<code>Clearing Status = 1</code>), the <code>Reference Key 2</code> value is <strong>ignored for outcome classification</strong>. The row is counted under "Open (Actionable)" regardless of its code. Outcome is only assigned once the item is closed.
+    <strong>Open items:</strong> If a row is open (<code>Clearing Status = 1</code>), the <code>Reference Key 2</code> value is <strong>ignored for outcome classification</strong>. The row is counted under "Open (Actionable)" regardless of its code. Outcome is only assigned once the item is closed. <strong>Exception: <code>SHO</code>.</strong> A row with <code>Reference Key 2 = SHO</code> is an Actual Shortage whether it is open or closed.
   </div>
 
   <h3>R02 Classification Summary</h3>
@@ -370,8 +370,8 @@
     <tbody>
       <tr><td><span class="badge badge-green">Recovered</span></td><td><code>""</code>, <code>PAYBACK</code>, <code>RET</code>, <code>RT</code>, <code>R1R2</code></td><td>Money was recovered from the customer</td></tr>
       <tr><td><span class="badge badge-red">Lost</span></td><td><code>COM*</code>, <code>*WO*</code></td><td>The deduction was not recoverable</td></tr>
-      <tr><td><span class="badge badge-amber">Actual Shortage</span></td><td><code>SHO</code></td><td>Confirmed real shortage, reserved separately</td></tr>
-      <tr><td><span class="badge badge-blue">Open</span></td><td><em>any code, if row is open</em></td><td>Still in dispute — not yet resolved</td></tr>
+      <tr><td><span class="badge badge-amber">Actual Shortage</span></td><td><code>SHO</code> (open or closed)</td><td>Confirmed real shortage, reserved separately</td></tr>
+      <tr><td><span class="badge badge-blue">Open</span></td><td><em>any code except SHO, if row is open</em></td><td>Still in dispute — not yet resolved</td></tr>
     </tbody>
   </table>
 </div>

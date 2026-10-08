@@ -115,7 +115,8 @@ For R02 rows, `Reference Key 2` drives the outcome classification.
 
 > **Open items.** If a row is open, `Reference Key 2` is ignored for outcome classification — the row
 > counts under "Open (Actionable)" regardless of its code. An outcome is only assigned once the item
-> is closed.
+> is closed. **Exception: `SHO`.** A line with `Reference Key 2` = `SHO` is an Actual Shortage whether
+> it is open or closed.
 
 ### R02 classification summary
 
@@ -123,8 +124,8 @@ For R02 rows, `Reference Key 2` drives the outcome classification.
 | --- | --- | --- |
 | Recovered | `""`, `PAYBACK`, `RET`, `RT`, `R1R2` | Money was recovered from the customer |
 | Lost | `COM*`, `*WO*` | The deduction was not recoverable |
-| Actual Shortage | `SHO` | Confirmed real shortage, reserved separately |
-| Open | *any code, if the row is open* | Still in dispute, not yet resolved |
+| Actual Shortage | `SHO` (open or closed) | Confirmed real shortage, reserved separately |
+| Open | *any code except `SHO`, if the row is open* | Still in dispute, not yet resolved |
 
 ---
 
@@ -178,11 +179,11 @@ Determined automatically from two possible columns, in priority order:
 
 ### R02 decision tree
 
-1. Is the row **open**? → **Open (Actionable)**. Stop.
-2. Is `Reference Key 2` in `{"", "PAYBACK", "RET", "RT", "R1R2"}`? → **Recovered**
-3. Does it **start with** `COM`? → **Lost**
-4. Does it **contain** `WO`? → **Lost**
-5. Is it exactly `SHO`? → **Actual Shortage**
+1. Is `Reference Key 2` exactly `SHO`, open or closed? → **Actual Shortage**. Stop.
+2. Is the row **open**? → **Open (Actionable)**. Stop.
+3. Is `Reference Key 2` in `{"", "PAYBACK", "RET", "RT", "R1R2"}`? → **Recovered**
+4. Does it **start with** `COM`? → **Lost**
+5. Does it **contain** `WO`? → **Lost**
 6. Anything else? → **Unclassified** (review and update)
 
 ### R16 decision tree (closed only)

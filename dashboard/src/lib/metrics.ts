@@ -396,19 +396,22 @@ const OUTCOME_CHART_ORDER = [
   UNCLASSIFIED,
 ];
 
-/** Closed shortage lines in the period, classified by Reference Key 2. */
+/** Closed shortage lines in the period, classified by Reference Key 2. SHO counts even when open. */
 export function byClosedOutcome(rows: ClaimRow[]): NamedTotal[] {
   return aggregate(
-    rows.filter((r) => countsInOutcomeTotals(r) && !r.isOpen),
+    rows.filter((r) => countsInOutcomeTotals(r) && (!r.isOpen || r.outcome === 'SHO')),
     (r) => r.outcome,
     ['Recovered', 'Write-off', 'Refused', 'SHO', UNCLASSIFIED],
   );
 }
 
-/** Open shortage lines: Potential Lost when Reference Key 2 contains COM, otherwise With Client. */
+/**
+ * Open shortage lines: Potential Lost when Reference Key 2 contains COM, otherwise With Client.
+ * Open SHO lines are an actual shortage, so they are not listed here.
+ */
 export function byOpenChart(rows: ClaimRow[]): NamedTotal[] {
   return aggregate(
-    rows.filter((r) => !r.isExcluded && r.isOpen),
+    rows.filter((r) => !r.isExcluded && r.isOpen && r.outcome !== 'SHO'),
     (r) => openChartBucket(r.refKey2),
     ['With Client', 'Potential Lost'],
   );
@@ -418,7 +421,7 @@ export function byOpenChart(rows: ClaimRow[]): NamedTotal[] {
 export function byOutcomeAndOpen(rows: ClaimRow[]): NamedTotal[] {
   return aggregate(
     rows.filter(countsInOutcomeTotals),
-    (r) => (r.isOpen ? openChartBucket(r.refKey2) : r.outcome),
+    (r) => (r.isOpen && r.outcome !== 'SHO' ? openChartBucket(r.refKey2) : r.outcome),
     OUTCOME_CHART_ORDER,
   );
 }

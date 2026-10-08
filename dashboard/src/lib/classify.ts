@@ -60,13 +60,14 @@ export function penaltyCategoryFromRefKey2(refKey2: string, itemText = ''): stri
  */
 export function classifyShortage(refKey2: string, isOpen: boolean): Outcome {
   if (isExcludedCode(refKey2)) return 'Excluded';
+  // SHO is an actual shortage whether or not the line is cleared yet.
+  if (refKey2 === CODIFICATION.actualShortageCode) return 'SHO';
   if (isOpen) return 'Open';
   if ((CODIFICATION.recoveredRefKey2 as readonly string[]).includes(refKey2)) return 'Recovered';
   if (CODIFICATION.shortageRecoveredContains.some((part) => refKey2.includes(part))) return 'Recovered';
   // Cleared COM, COM WO, and WO COM are Refused. Plain WO is Write-off. SHO stays its own bucket.
   if (refKey2.includes(CODIFICATION.refuseToPayPrefix)) return 'Refused';
   if (refKey2.includes(CODIFICATION.writeOffContains)) return 'Write-off';
-  if (refKey2 === CODIFICATION.actualShortageCode) return 'SHO';
   return UNCLASSIFIED;
 }
 

@@ -114,7 +114,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
     [rows, filters, currentYear],
   );
   const topOpen = useMemo(
-    () => byCustomer(cyRows.filter((r) => r.isOpen), 5),
+    () => byCustomer(cyRows.filter((r) => r.isOpen && r.outcome !== 'SHO'), 5),
     [cyRows],
   );
 
@@ -413,7 +413,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
       <div className="grid grid-3">
         <SectionCard
           title={`Outcome split — ${cyLabel}`}
-          subtitle="Closed items classified by Reference Key 2."
+          subtitle="Closed items, plus SHO lines that are still open."
           sectionExport={{
             filename: xlsxName('shortage-outcome-split'),
             headers: ['Outcome', 'Amount', 'Lines'],
