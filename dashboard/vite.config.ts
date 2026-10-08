@@ -11,6 +11,9 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1600,
+    modulePreload: {
+      resolveDependencies: (_filename, deps) => deps.filter((dep) => !dep.includes('plotly')),
+    },
     rollupOptions: {
       output: {
         manualChunks: {

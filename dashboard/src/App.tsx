@@ -10,7 +10,8 @@ import {
   savedSessionLabel,
   type TabId,
 } from './lib/persistSession';
-import { isBaselineFilename, parseWorkbook } from './lib/parseWorkbook';
+import { isBaselineFilename } from './lib/parseWorkbook';
+import { parseWorkbookOffMainThread } from './lib/parseOffThread';
 import { fetchSharePointWorkbook, isSharePointPage, sharePointWorkbookName } from './lib/sharePointWorkbook';
 import type { BaselineDiff, ParseResult } from './lib/types';
 import { DataQualityTab } from './components/DataQualityTab';
@@ -71,10 +72,10 @@ export default function App() {
   ) => {
     setBusy(true);
     setError(null);
-    if (!restoredRef.current) setNotice(null);
+    setNotice(`Reading ${file.name}. A large workbook can take a minute. Leave this page open.`);
 
     try {
-      const result = await parseWorkbook(file);
+      const result = await parseWorkbookOffMainThread(file);
       if (result.rows.length === 0) {
         setError(
           result.warnings.find((w) => w.level === 'error')?.message ??

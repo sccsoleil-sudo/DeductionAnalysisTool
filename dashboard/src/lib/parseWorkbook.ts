@@ -49,9 +49,11 @@ function toDate(value: unknown): Date | null {
   // Excel serial date (days since 1899-12-30).
   if (typeof value === 'number') {
     if (value < 1 || value > 200000) return null;
-    const ms = Math.round((value - 25569) * 86400 * 1000);
-    const d = new Date(ms);
-    return Number.isNaN(d.getTime()) ? null : d;
+    // Excel serials are calendar dates. Build a local date from the UTC day so
+    // US time zones do not shift the claim date back by one day.
+    const utc = new Date(Math.round((value - 25569) * 86400 * 1000));
+    if (Number.isNaN(utc.getTime())) return null;
+    return new Date(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate());
   }
   const parsed = new Date(text(value));
   return Number.isNaN(parsed.getTime()) ? null : parsed;
@@ -77,9 +79,8 @@ export function isBaselineFilename(fileName: string): boolean {
   return stem.replace(/[^a-z0-9]/gi, '').toLowerCase() === CODIFICATION.autoBaselineFilename;
 }
 
-export async function parseWorkbook(file: File): Promise<ParseResult> {
-  const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { cellDates: true });
+export function parseWorkbookBuffer(buffer: ArrayBuffer, fileName: string): ParseResult {
+  const workbook = XLSX.read(buffer, { type: 'array', dense: true, cellDates: false, cellNF: false, cellStyles: false });
 
   const warnings: ParseWarning[] = [];
   const sheetsUsed: string[] = [];
@@ -96,7 +97,7 @@ export async function parseWorkbook(file: File): Promise<ParseResult> {
     if (!sheet) continue;
 
     const raw = normalizeHeaders(
-      XLSX.utils.sheet_to_json<RawRow>(sheet, { defval: null, raw: false, rawNumbers: true }),
+      XLSX.utils.sheet_to_json<RawRow>(sheet, { defval: null, raw: true }),
     );
 
     if (raw.length === 0) {
@@ -224,10 +225,15 @@ export async function parseWorkbook(file: File): Promise<ParseResult> {
 
   return {
     rows,
-    fileName: file.name,
+    fileName,
     sheetsUsed,
     sheetsSkipped,
     warnings,
     openClosedSource: rows.length > 0 ? 'Clearing Date / Clearing Journal Entry' : 'none',
   };
+}
+
+export async function parseWorkbook(file: File): Promise<ParseResult> {
+  const buffer = await file.arrayBuffer();
+  return parseWorkbookBuffer(buffer, file.name);
 }
