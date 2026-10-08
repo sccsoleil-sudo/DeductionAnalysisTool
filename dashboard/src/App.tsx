@@ -247,8 +247,14 @@ export default function App() {
     [filtered],
   );
 
-  const divisions = useMemo(() => distinctValues(rows, (r) => r.division), [rows]);
-  const customers = useMemo(() => distinctValues(rows, (r) => r.customerName), [rows]);
+  // Payment offsets (PMT) and XX/XXX noise lines are always held out of lists, counts and pivots.
+  const liveRows = useMemo(() => rows.filter((r) => !r.isExcluded), [rows]);
+  const liveFiltered = useMemo(() => filtered.filter((r) => !r.isExcluded), [filtered]);
+  const liveShortageRows = useMemo(() => shortageRows.filter((r) => !r.isExcluded), [shortageRows]);
+  const livePenaltyRows = useMemo(() => penaltyRows.filter((r) => !r.isExcluded), [penaltyRows]);
+
+  const divisions = useMemo(() => distinctValues(liveRows, (r) => r.division), [liveRows]);
+  const customers = useMemo(() => distinctValues(liveRows, (r) => r.customerName), [liveRows]);
 
   const dateBounds = useMemo(() => {
     let min: Date | null = null;
@@ -344,14 +350,14 @@ export default function App() {
             onClick={() => setTab('shortage')}
           >
             Shortage Claims (R02)
-            <span className="tab-count">{count(shortageRows.length)}</span>
+            <span className="tab-count">{count(liveShortageRows.length)}</span>
           </button>
           <button
             className={`tab${tab === 'penalty' ? ' active' : ''}`}
             onClick={() => setTab('penalty')}
           >
             Penalties &amp; Fines (R16)
-            <span className="tab-count">{count(penaltyRows.length)}</span>
+            <span className="tab-count">{count(livePenaltyRows.length)}</span>
           </button>
           <button
             className={`tab${tab === 'quality' ? ' active' : ''}`}
@@ -418,10 +424,10 @@ export default function App() {
                     blocks={customBlocks}
                     onChange={setCustomBlocks}
                     filters={filters}
-                    allRows={rows}
-                    filteredRows={filtered}
-                    shortageRows={shortageRows}
-                    penaltyRows={penaltyRows}
+                    allRows={liveRows}
+                    filteredRows={liveFiltered}
+                    shortageRows={liveShortageRows}
+                    penaltyRows={livePenaltyRows}
                   />
                 </Suspense>
               )}

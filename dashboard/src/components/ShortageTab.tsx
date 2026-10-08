@@ -259,7 +259,6 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
             current={cy.openArBalance}
             previous={ly.openArBalance}
             footnote={[
-              `Uncleared as of ${longDate(asOf)}`,
               `Open claimed this year (${currentYear}): ${money(openArByClaimYear.claimedThisYear)}`,
               `+ Open claimed previous year (${lastYear}): ${money(openArByClaimYear.claimedPreviousYear)}`,
               ...(openArByClaimYear.claimedEarlier !== 0
@@ -291,7 +290,7 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
             current={cyPl.writeOffTotal}
             previous={lyPl.writeOffTotal}
             footnote={[
-              `${basisLabel(filters.plBasis)} · Refused ${money(cyPl.comWriteOff)}`,
+              `Refused ${money(cyPl.comWriteOff)}`,
               `Gross ${money(cyPl.writeOffGross)} − credit written off ${money(cyPl.writeOffCredit)}`,
               ...(filters.plBasis === 'clearing'
                 ? [
@@ -306,7 +305,6 @@ export function ShortageTab({ rows, allRows, filters }: ShortageTabProps) {
             tone="warn"
             current={cy.actualShortage}
             previous={ly.actualShortage}
-            footnote={basisLabel(filters.basis)}
           />
         </div>
         {filters.basis === 'clearing' && priorYearClaimed > 0 && (

@@ -175,7 +175,7 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
             tone="primary"
             current={categoryTotalCy}
             previous={categoryTotalLy}
-            footnote={`${count(categoryTotalCountCy)} lines · Fill Rate + EDI + DC Charges + Delivery + Commercial`}
+            footnote={`${count(categoryTotalCountCy)} lines`}
           />
           {kpiCategories.map((cat, index) => {
             const cyCat = catCyMap.get(cat.label);
@@ -194,13 +194,6 @@ export function PenaltyTab({ rows, filters }: PenaltyTabProps) {
               />
             );
           })}
-        </div>
-        <div className="note info" style={{ marginTop: 12, marginBottom: 0 }}>
-          Category totals use Ref Key 2 for every R16 line (open and closed)
-          {categoryTotalAllCy !== categoryTotalCy && (
-            <> · other RF2 buckets {money(categoryTotalAllCy - categoryTotalCy)}</>
-          )}
-          {' · '}excludes {excludedCodesLabel()}
         </div>
         {filters.basis === 'clearing' && priorYearClaimed > 0 && (
           <div className="note info" style={{ marginTop: 8, marginBottom: 0 }}>

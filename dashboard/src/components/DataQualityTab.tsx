@@ -50,10 +50,13 @@ export function DataQualityTab({ parse, rows, filters }: DataQualityTabProps) {
 
   const unclassified = codeStats.filter((c) => !c.recognized);
   const unknownDivision = useMemo(
-    () => rows.filter((r) => r.division === 'Unknown'),
+    () => rows.filter((r) => !r.isExcluded && r.division === 'Unknown'),
     [rows],
   );
-  const missingDates = useMemo(() => rows.filter((r) => r.journalEntryDate === null), [rows]);
+  const missingDates = useMemo(
+    () => rows.filter((r) => !r.isExcluded && r.journalEntryDate === null),
+    [rows],
+  );
 
   const dateRange = useMemo(() => {
     let min: Date | null = null;
