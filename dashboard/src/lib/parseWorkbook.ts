@@ -79,6 +79,30 @@ export function isBaselineFilename(fileName: string): boolean {
   return stem.replace(/[^a-z0-9]/gi, '').toLowerCase() === CODIFICATION.autoBaselineFilename;
 }
 
+/**
+ * Some exports declare a used range thousands of columns wide (a stray formatted cell far to the
+ * right). Reading that range expands every row to that width and exhausts browser memory, so
+ * shrink the range to the cells that actually hold a value.
+ */
+function trimSheetRange(sheet: XLSX.WorkSheet): void {
+  const data = (sheet as unknown as { '!data'?: Array<Array<{ v?: unknown } | undefined> | undefined> })['!data'];
+  if (!data) return;
+  let lastRow = -1;
+  let lastCol = -1;
+  for (let r = 0; r < data.length; r += 1) {
+    const row = data[r];
+    if (!row) continue;
+    row.forEach((cell, c) => {
+      if (cell && cell.v !== undefined && cell.v !== null && cell.v !== '') {
+        if (c > lastCol) lastCol = c;
+        lastRow = r;
+      }
+    });
+  }
+  if (lastRow < 0 || lastCol < 0) return;
+  sheet['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: lastRow, c: lastCol } });
+}
+
 export function parseWorkbookBuffer(buffer: ArrayBuffer, fileName: string): ParseResult {
   const workbook = XLSX.read(buffer, { type: 'array', dense: true, cellDates: false, cellNF: false, cellStyles: false });
 
@@ -95,6 +119,7 @@ export function parseWorkbookBuffer(buffer: ArrayBuffer, fileName: string): Pars
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName];
     if (!sheet) continue;
+    trimSheetRange(sheet);
 
     const raw = normalizeHeaders(
       XLSX.utils.sheet_to_json<RawRow>(sheet, { defval: null, raw: true }),
